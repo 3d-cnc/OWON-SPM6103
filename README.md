@@ -6,7 +6,7 @@ Windows-Programm, das Messwerte des Labornetzteils mit Multimeter **OWON SPM6103
 - **Tab „Aufzeichnung“:** CSV-Export für Excel, Energie (Wh) und Ladung (Ah), Kennwerte der ganzen Aufzeichnung und eine Tabelle aller Messpunkte.
 - Die Oberfläche ist auf 1920 × 1080 ausgelegt. Ein Demo-Modus funktioniert ohne Gerät.
 
-Bedienung und Fehlersuche: [LIESMICH.txt](LIESMICH.txt).
+Bedienung und Fehlersuche: [LIESMICH.txt](LIESMICH.txt). Stand und offene Punkte: [OFFEN.md](OFFEN.md).
 
 ## Aufbau
 

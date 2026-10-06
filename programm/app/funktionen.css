@@ -1,0 +1,119 @@
+/* Zusatzfunktionen SPM-10 bis SPM-19: Vorlagen, Automatik, Kennlinie, Bauteile, Vergleich.
+   Farben und Grundbausteine (.panel, .kachel, .zeile …) kommen aus index.html. */
+
+/* ---------- gemeinsame Bausteine ---------- */
+/* hidden muss gewinnen, auch gegen display: flex aus den Regeln für Beschriftungen */
+[hidden] { display: none !important; }
+.zweispaltig { grid-template-columns: 470px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.spalte-links, .spalte-rechts { display: flex; flex-direction: column; gap: 14px; min-height: 0; min-width: 0; }
+.spalte-links { overflow: auto; }
+.formular { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.formular.vier { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.formular label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+.formular label.ganz { grid-column: 1 / -1; }
+.formular input, .formular select { width: 100%; font-family: var(--mono); }
+.formular select { font-family: inherit; }
+input.kurz { width: 70px; font-family: var(--mono); }
+.fortschritt { height: 8px; min-width: 80px; background: var(--panel2); border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
+.fortschritt.breit { flex: 1; }
+.fortschritt i { display: block; height: 100%; width: 0; background: var(--i); transition: width .3s; }
+.status-pille { font-size: 12px; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.status-pille.laeuft { color: var(--ok); border-color: var(--ok); }
+.status-pille.fertig { color: var(--i); border-color: var(--i); }
+.status-pille.fehler { color: var(--err); border-color: var(--err); }
+.hinweis.warnung { color: var(--warn); }
+.kacheln.vier { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; }
+.kachel.gut .zahl { color: var(--ok); } .kachel.schlecht .zahl { color: var(--err); }
+.segmente { gap: 0; }
+.segmente button { border-radius: 0; margin-left: -1px; }
+.segmente button:first-child { border-radius: 6px 0 0 6px; }
+.segmente button:last-child { border-radius: 0 6px 6px 0; }
+.segmente button.aktiv { outline: none; background: var(--knopf-hover); color: var(--text); box-shadow: inset 0 -2px 0 var(--i); }
+.listen-kopf { color: var(--muted); font-size: 12px; font-weight: 600; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+.liste { flex: 1; min-height: 0; overflow: auto; font-family: var(--mono); font-size: 13px; }
+.liste > div { padding: 3px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.liste .leer { color: var(--muted); font-family: inherit; border: 0; padding: 12px 0; }
+.ordner { font-family: var(--mono); word-break: break-all; }
+
+/* ---------- Live: Vorlagen, laufende Automatiken, Alarm ---------- */
+.vorlagen { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+.vorlagen .titel { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.vorlage { padding: 3px 10px; font-size: 12px; border-radius: 99px; }
+.vorlage small { font-family: var(--mono); color: var(--muted); margin-left: 6px; }
+.vorlage.neu { padding: 3px 9px; }
+.automatik-chips { display: contents; }
+.chip-auto { font-size: 12px; padding: 2px 3px 2px 10px; border-radius: 99px; border: 1px solid var(--ok); color: var(--ok); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.chip-auto button { padding: 1px 8px; font-size: 11px; border-radius: 99px; }
+#alarm-leiste { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 30; display: none; align-items: center; gap: 14px;
+  background: var(--err); color: #fff; padding: 10px 12px 10px 18px; border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .45); font-weight: 600; max-width: calc(100vw - 40px); }
+#alarm-leiste.sichtbar { display: flex; animation: alarm 1s ease-in-out infinite alternate; }
+#alarm-leiste button { background: #fff; color: #7a0d0d; border: 0; font-weight: 700; }
+@keyframes alarm { to { box-shadow: 0 0 0 6px color-mix(in srgb, var(--err) 35%, transparent), 0 12px 30px rgba(0, 0, 0, .45); } }
+
+/* ---------- Automatik ---------- */
+#seite-auto { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.auto-panel { display: flex; flex-direction: column; overflow: auto; }
+.auto-panel > .hinweis:first-of-type { margin-top: 0; }
+.bedingungen { display: grid; grid-template-columns: 170px minmax(0, 1fr) 150px 170px; gap: 10px 12px; align-items: center; margin-top: 12px; }
+.bedingungen .felder { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+.bedingungen .wert { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.regeln { display: grid; gap: 6px; }
+.regel { display: grid; grid-template-columns: 22px 160px 90px 110px 34px minmax(0, 1fr) 34px; gap: 8px; align-items: center; }
+.regel input[type=text] { font-family: var(--mono); }
+.regel .einheit { color: var(--muted); font-size: 12px; }
+.regel.ausgeloest { outline: 2px solid var(--err); outline-offset: 3px; border-radius: 6px; }
+.regel button { padding: 4px 0; }
+.raster-schritte { display: grid; grid-template-columns: 40px repeat(3, minmax(0, 1fr)) 60px 34px; gap: 8px; align-items: center; }
+.schritte-kopf { color: var(--muted); font-size: 12px; font-weight: 600; margin-top: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.schritte { display: grid; gap: 4px; padding-top: 6px; overflow: auto; min-height: 70px; flex: 1; align-content: start; }
+.schritte .raster-schritte > div:first-child { font-family: var(--mono); color: var(--muted); text-align: center; }
+.schritte input[type=text] { font-family: var(--mono); }
+.schritte .laufend { background: color-mix(in srgb, var(--ok) 14%, transparent); border-radius: 6px; }
+.schritte button { padding: 4px 0; }
+
+/* ---------- Kennlinie, Vergleich: Diagramme ---------- */
+.diagramm-panel { flex: 1.5; display: flex; flex-direction: column; min-height: 0; }
+.diagramm-panel canvas { flex: 1; min-height: 200px; width: 100%; display: block; cursor: crosshair; }
+.punkte-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.raster-kl { display: grid; grid-template-columns: 50px repeat(6, minmax(0, 1fr)); gap: 8px; }
+.raster-kl > div:not(:first-child) { text-align: right; }
+.kurvenliste { display: grid; gap: 6px; }
+.kurve-eintrag { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.kurve-eintrag.gewaehlt { border-color: var(--i); }
+.kurve-eintrag .farbe { width: 12px; height: 12px; border-radius: 3px; }
+.kurve-eintrag .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kurve-eintrag small { color: var(--muted); font-family: var(--mono); }
+.kurve-eintrag button { padding: 2px 8px; font-size: 12px; }
+.vg-eintrag { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+.vg-eintrag .kopf { display: flex; gap: 8px; align-items: center; }
+.vg-eintrag .kopf .farbe { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.vg-eintrag .kopf .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.vg-eintrag .werte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 10px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.vg-eintrag .werte b { font-family: var(--mono); font-weight: 400; color: var(--text); display: block; }
+
+/* ---------- Bauteile ---------- */
+.urteil-panel { flex: 1.3; display: flex; flex-direction: column; min-height: 0; }
+.urteil { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); min-height: 220px; transition: background .2s; }
+.urteil.gut { background: color-mix(in srgb, var(--ok) 22%, var(--panel2)); border-color: var(--ok); }
+.urteil.schlecht { background: color-mix(in srgb, var(--err) 22%, var(--panel2)); border-color: var(--err); }
+.u-wert { font-family: var(--mono); font-size: clamp(48px, 6vw, 110px); line-height: 1; font-variant-numeric: tabular-nums; }
+.u-text { font-size: clamp(22px, 2.4vw, 42px); font-weight: 700; letter-spacing: .5px; }
+.urteil.gut .u-text { color: var(--ok); } .urteil.schlecht .u-text { color: var(--err); }
+.u-abw { color: var(--muted); font-family: var(--mono); font-size: 18px; min-height: 24px; }
+.raster-bt { display: grid; grid-template-columns: 60px 110px minmax(0, 1fr) 120px 110px; gap: 8px; }
+.raster-bt > div:nth-child(3), .raster-bt > div:nth-child(4) { text-align: right; }
+.liste .gut-text { color: var(--ok); } .liste .schlecht-text { color: var(--err); }
+
+/* Kleinere Fenster: untereinander, Seite scrollt */
+@media (max-width: 1500px), (max-height: 980px) {
+  #seite-auto { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .auto-panel { overflow: visible; }
+  .schritte { max-height: 320px; }
+  .zweispaltig { grid-template-columns: 420px minmax(0, 1fr); grid-template-rows: none; height: auto; }
+  .spalte-rechts { min-height: 720px; }
+}
+@media (max-width: 980px) {
+  .zweispaltig { grid-template-columns: minmax(0, 1fr); }
+  .formular.vier { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bedingungen { grid-template-columns: 1fr 1fr; }
+}

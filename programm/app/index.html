@@ -45,7 +45,7 @@ header .rechts { margin-left: auto; display: flex; gap: 8px; align-items: center
 #status.verbunden .punkt { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 #status.demo .punkt { background: var(--warn); }
 #status.fehler .punkt { background: var(--err); }
-#idn { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30vw; }
+#idn { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
 button, select, input { font: inherit; color: inherit; }
 button { background: var(--knopf); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
 button:hover:not(:disabled) { background: var(--knopf-hover); }
@@ -129,10 +129,11 @@ table.kennwerte td { padding: 6px; text-align: right; font-family: var(--mono); 
 table.kennwerte td:first-child { text-align: left; font-family: inherit; font-weight: 600; }
 table.kennwerte tr:last-child td { border-bottom: 0; }
 .tabelle-panel { display: flex; flex-direction: column; }
-.raster { display: grid; grid-template-columns: 80px 200px repeat(3, 130px) 90px 80px minmax(160px, 1fr); gap: 0 12px; align-items: center; padding: 0 12px; }
+.raster { display: grid; grid-template-columns: 70px 190px repeat(3, 120px) 80px 70px minmax(150px, 1fr) minmax(120px, .9fr); gap: 0 12px; align-items: center; padding: 0 12px; }
 .tabelle-kopf { color: var(--muted); font-size: 12px; font-weight: 600; height: 30px; border-bottom: 1px solid var(--line); }
 .tabelle-kopf > div, .tz > div { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tabelle-kopf > div:nth-child(2), .tz > div:nth-child(2), .tabelle-kopf > div:last-child, .tz > div:last-child { text-align: left; }
+.tabelle-kopf > div:nth-child(2), .tz > div:nth-child(2), .tabelle-kopf > div:last-child, .tz > div:last-child, .tabelle-kopf > div:nth-child(8), .tz > div:nth-child(8) { text-align: left; }
+.tz .notiz { color: var(--warn); font-family: inherit; }
 .tabelle { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
 #tabelle-zeilen { position: absolute; left: 0; right: 0; top: 0; }
 .tz { height: 26px; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -208,6 +209,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
   .sollwerte { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
+<link rel="stylesheet" href="funktionen.css">
 </head>
 <body>
 <header>
@@ -219,6 +221,10 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
   <nav class="tabs" role="tablist">
     <button class="tab aktiv" role="tab" data-seite="seite-live">Live</button>
     <button class="tab" role="tab" data-seite="seite-aufz">Aufzeichnung<span class="zaehler" id="tab-zaehler"></span></button>
+    <button class="tab" role="tab" data-seite="seite-auto">Automatik<span class="zaehler" id="tab-auto"></span></button>
+    <button class="tab" role="tab" data-seite="seite-kennlinie">Kennlinie</button>
+    <button class="tab" role="tab" data-seite="seite-bauteile">Bauteile</button>
+    <button class="tab" role="tab" data-seite="seite-vergleich">Vergleich</button>
   </nav>
   <div id="status"><span class="punkt"></span><span id="status-text">Nicht verbunden</span><span id="idn"></span></div>
   <div class="rechts">
@@ -244,12 +250,15 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
 </header>
 
 <div id="meldung"></div>
+<div id="alarm-leiste" role="alert"><span id="alarm-text"></span><button id="alarm-quittieren">Quittieren</button></div>
 
 <main>
   <!-- ======================= Tab 1: Live ======================= -->
   <div class="seite aktiv" id="seite-live">
     <section class="panel">
-      <h2>Netzteil <span class="rechts"><span id="rate" class="klein"></span></span></h2>
+      <h2>Netzteil <span class="rechts"><label class="klein" id="demo-last-wahl" hidden title="Was im Demo-Modus am Ausgang hängt">Demo-Last
+            <select id="demo-last"><option value="widerstand">Widerstand</option><option value="akku">Akku (Li-Ion, 5 mAh)</option><option value="led">rote LED</option></select></label>
+          <span id="rate" class="klein"></span></span></h2>
       <div class="anzeigen">
         <div class="anzeige u"><div class="name">Spannung</div><div class="wert"><span id="u">–</span><small>V</small></div></div>
         <div class="anzeige i"><div class="name">Strom</div><div class="wert"><span id="i">–</span><small>A</small></div></div>
@@ -261,6 +270,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         <span id="m-ovp" class="marke aus" title="Überspannungsschutz ausgelöst">OVP</span>
         <span id="m-ocp" class="marke aus" title="Überstromschutz ausgelöst">OCP</span>
         <span id="m-otp" class="marke aus" title="Übertemperatur">OTP</span>
+        <span class="automatik-chips" id="automatik-chips"></span>
       </div>
       <div class="sollwerte">
         <div class="sollwert"><div class="name">Spannung <b id="s-volt">–</b></div>
@@ -272,6 +282,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         <div class="sollwert"><div class="name">OCP <b id="s-ocp">–</b></div>
           <div class="eingabe"><input type="text" id="e-ocp" inputmode="decimal" placeholder="A"><button data-setze="CURR:LIM" data-feld="e-ocp" data-max="11">Setzen</button></div></div>
       </div>
+      <div class="vorlagen" id="vorlagen"></div>
     </section>
 
     <section class="panel">
@@ -306,6 +317,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
               <option value="900">15 min</option><option value="3600">1 h</option><option value="0">alles</option>
             </select>
           </label>
+          <button id="markierung-knopf" title="Markierung mit Notiz setzen (Taste M)">Markierung (M)</button>
           <button id="anhalten">Anhalten</button>
         </span>
       </h2>
@@ -333,6 +345,18 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
       </section>
 
       <section class="panel">
+        <h2>Laufend speichern <span class="rechts"><span class="status-pille" id="ls-status">aus</span></span></h2>
+        <label class="klein"><input type="checkbox" id="ls-an"> Während der Messung fortlaufend in eine CSV-Datei schreiben</label>
+        <div class="zeile">
+          <label class="klein"><input type="radio" name="ls-modus" value="sitzung" checked> eine Datei für die ganze Sitzung</label>
+          <label class="klein"><input type="radio" name="ls-modus" value="ausgang"> je Einschalten des Ausgangs eine neue Datei</label>
+        </div>
+        <div class="zeile"><span class="klein ordner" id="ls-ordner">–</span></div>
+        <div class="zeile"><button id="ls-ordner-waehlen">Ordner wählen …</button><button id="ls-ordner-oeffnen">Ordner öffnen</button></div>
+        <p class="hinweis" id="ls-info">Nach einem Absturz oder Stromausfall ist dann nichts verloren.</p>
+      </section>
+
+      <section class="panel">
         <h2>Energie</h2>
         <div class="kacheln">
           <div class="kachel p"><div class="name">Abgegebene Energie</div><div class="zahl" id="energie">–</div></div>
@@ -355,10 +379,192 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
     <section class="panel tabelle-panel">
       <h2>Messpunkte <span class="rechts"><label class="klein"><input type="checkbox" id="folgen" checked> Neueste anzeigen</label></span></h2>
       <div class="raster tabelle-kopf">
-        <div>Nr.</div><div>Zeit</div><div>Spannung</div><div>Strom</div><div>Leistung</div><div>Modus</div><div>Ausgang</div><div>Multimeter</div>
+        <div>Nr.</div><div>Zeit</div><div>Spannung</div><div>Strom</div><div>Leistung</div><div>Modus</div><div>Ausgang</div><div>Multimeter</div><div>Markierung</div>
       </div>
       <div class="tabelle" id="tabelle"><div id="tabelle-hoehe"></div><div id="tabelle-zeilen"></div></div>
     </section>
+  </div>
+  <!-- ======================= Tab 3: Automatik (SPM-11 bis SPM-14) ======================= -->
+  <div class="seite" id="seite-auto">
+    <section class="panel auto-panel" id="p-abschalten">
+      <h2>Abschalten <span class="rechts"><span class="status-pille" id="ab-status">aus</span></span></h2>
+      <p class="hinweis">Schaltet den Ausgang aus, sobald eine der angehakten Bedingungen erfüllt ist. Gezählt wird ab „Überwachen“; die Zeit läuft nur, solange der Ausgang an ist.</p>
+      <div class="bedingungen">
+        <label class="klein"><input type="checkbox" id="ab-zeit-an"> Nach Zeit</label>
+        <div class="felder"><input type="text" id="ab-h" class="kurz" inputmode="numeric"> h <input type="text" id="ab-min" class="kurz" inputmode="numeric"> min <input type="text" id="ab-s" class="kurz" inputmode="numeric"> s</div>
+        <div class="fortschritt"><i id="ab-zeit-balken"></i></div><span class="wert" id="ab-zeit-wert"></span>
+
+        <label class="klein"><input type="checkbox" id="ab-wh-an"> Nach Energie</label>
+        <div class="felder"><input type="text" id="ab-wh" class="kurz" inputmode="decimal"> Wh</div>
+        <div class="fortschritt"><i id="ab-wh-balken"></i></div><span class="wert" id="ab-wh-wert"></span>
+
+        <label class="klein"><input type="checkbox" id="ab-ah-an"> Nach Ladung</label>
+        <div class="felder"><input type="text" id="ab-mah" class="kurz" inputmode="decimal"> mAh</div>
+        <div class="fortschritt"><i id="ab-ah-balken"></i></div><span class="wert" id="ab-ah-wert"></span>
+
+        <label class="klein"><input type="checkbox" id="ab-unter-an"> Strom fällt unter</label>
+        <div class="felder"><input type="text" id="ab-unter" class="kurz" inputmode="decimal"> A, für <input type="text" id="ab-unter-s" class="kurz" inputmode="numeric"> s</div>
+        <div class="fortschritt"><i id="ab-unter-balken"></i></div><span class="wert" id="ab-unter-wert"></span>
+      </div>
+      <p class="hinweis">„Strom fällt unter“ zählt erst, nachdem der Strom einmal darüber lag – sonst schaltet ein Ausgang ohne Last sofort ab.</p>
+      <div class="zeile"><button id="ab-start" class="haupt">Überwachen</button><button id="ab-stopp">Beenden</button></div>
+      <p class="hinweis" id="ab-info"></p>
+    </section>
+
+    <section class="panel auto-panel" id="p-alarme">
+      <h2>Grenzwerte und Alarme <span class="rechts"><label class="klein"><input type="checkbox" id="al-aktiv"> Alarme aktiv</label></span></h2>
+      <div class="regeln" id="al-regeln"></div>
+      <div class="zeile"><button id="al-neu">+ Regel</button><label class="klein"><input type="checkbox" id="al-ton" checked> Ton</label></div>
+      <p class="hinweis">Werte mit Vorsatz gehen auch: „1,5“, „500m“, „4,7k“. Ein Alarm löst aus, wenn die Bedingung zwei Messungen hintereinander gilt, und erst wieder, nachdem sie einmal nicht mehr galt.</p>
+      <p class="hinweis" id="al-info"></p>
+    </section>
+
+    <section class="panel auto-panel" id="p-ablauf">
+      <h2>Ablaufprogramm <span class="rechts"><span class="status-pille" id="ap-status">bereit</span></span></h2>
+      <div class="zeile oben">
+        <label class="klein">Programm <select id="ap-liste"></select></label>
+        <button id="ap-speichern">Speichern</button><button id="ap-speichern-unter">Speichern unter …</button><button id="ap-loeschen">Löschen</button>
+      </div>
+      <div class="raster-schritte schritte-kopf"><div>Nr.</div><div>Spannung [V]</div><div>Strom [A]</div><div>Dauer [s]</div><div title="Spannung vom vorigen Schritt aus gleichmäßig hin- statt umschalten">Rampe</div><div></div></div>
+      <div class="schritte" id="ap-schritte"></div>
+      <div class="zeile">
+        <button id="ap-neu">+ Schritt</button>
+        <label class="klein">Durchläufe <input type="text" id="ap-wdh" class="kurz" inputmode="numeric"> (0 = endlos)</label>
+        <label class="klein">Am Ende <select id="ap-ende"><option value="aus">Ausgang aus</option><option value="an">Ausgang an lassen</option></select></label>
+        <span class="klein" id="ap-summe"></span>
+      </div>
+      <div class="zeile"><button id="ap-start" class="haupt">Starten</button><button id="ap-stopp">Stoppen</button><div class="fortschritt breit"><i id="ap-balken"></i></div></div>
+      <p class="hinweis" id="ap-info"></p>
+    </section>
+
+    <section class="panel auto-panel" id="p-akku">
+      <h2>Akku laden <span class="rechts"><span class="status-pille" id="ak-status">bereit</span></span></h2>
+      <div class="formular vier">
+        <label>Akku-Typ <select id="ak-typ"></select></label>
+        <label>Zellen in Reihe <input type="text" id="ak-zellen" inputmode="numeric"></label>
+        <label>Kapazität [mAh] <input type="text" id="ak-kap" inputmode="decimal"></label>
+        <label>Ladestrom [A] <input type="text" id="ak-strom" inputmode="decimal"></label>
+        <label>Ladeschluss [V] <input type="text" id="ak-schluss" inputmode="decimal"></label>
+        <label>Ende unter [A] <input type="text" id="ak-ende" inputmode="decimal"></label>
+        <label>Zeitlimit [h] <input type="text" id="ak-limit" inputmode="decimal"></label>
+        <label>&nbsp;<button id="ak-vorgaben" type="button">Werte vorschlagen</button></label>
+      </div>
+      <p class="hinweis" id="ak-vorschlag"></p>
+      <div class="kacheln vier">
+        <div class="kachel"><div class="name">Phase</div><div class="zahl klein" id="ak-phase">–</div></div>
+        <div class="kachel i"><div class="name">Geladen</div><div class="zahl klein" id="ak-geladen">–</div></div>
+        <div class="kachel"><div class="name">Dauer</div><div class="zahl klein" id="ak-dauer">–</div></div>
+        <div class="kachel u"><div class="name">Akkuspannung</div><div class="zahl klein" id="ak-spannung">–</div></div>
+      </div>
+      <div class="zeile"><button id="ak-start" class="haupt">Laden starten</button><button id="ak-stopp">Abbrechen</button><div class="fortschritt breit"><i id="ak-balken"></i></div></div>
+      <p class="hinweis warnung">Lithium-Akkus nur unter Aufsicht und auf nicht brennbarer Unterlage laden. Das Programm setzt OVP und OCP passend; die Abschaltung am Ende hängt aber an PC und USB-Kabel.</p>
+      <p class="hinweis" id="ak-info"></p>
+    </section>
+  </div>
+
+  <!-- ======================= Tab 4: Kennlinie (SPM-15) ======================= -->
+  <div class="seite zweispaltig" id="seite-kennlinie">
+    <div class="spalte-links">
+      <section class="panel">
+        <h2>Kennlinie aufnehmen <span class="rechts"><span class="status-pille" id="kl-status">bereit</span></span></h2>
+        <div class="formular">
+          <label class="ganz">Bauteil <input type="text" id="kl-name" placeholder="z. B. LED rot"></label>
+          <label>Start [V] <input type="text" id="kl-von" inputmode="decimal"></label>
+          <label>Ende [V] <input type="text" id="kl-bis" inputmode="decimal"></label>
+          <label>Schritt [V] <input type="text" id="kl-schritt" inputmode="decimal"></label>
+          <label>Strombegrenzung [A] <input type="text" id="kl-strom" inputmode="decimal"></label>
+          <label class="ganz">Wartezeit je Schritt [ms] <input type="text" id="kl-warten" inputmode="numeric"></label>
+        </div>
+        <div class="zeile"><label class="klein"><input type="checkbox" id="kl-cc" checked> Abbrechen, sobald die Strombegrenzung greift</label></div>
+        <div class="zeile"><label class="klein"><input type="checkbox" id="kl-aus" checked> Ausgang danach ausschalten</label></div>
+        <div class="zeile"><button id="kl-messen" class="haupt">Messen</button><button id="kl-stopp">Stoppen</button><div class="fortschritt breit"><i id="kl-balken"></i></div></div>
+        <p class="hinweis" id="kl-info">Bei LEDs und Dioden unbedingt eine kleine Strombegrenzung wählen, z. B. 20 mA.</p>
+      </section>
+      <section class="panel">
+        <h2>Kurven</h2>
+        <div id="kl-kurven" class="kurvenliste"></div>
+      </section>
+    </div>
+    <div class="spalte-rechts">
+      <section class="panel diagramm-panel">
+        <h2>Strom über Spannung <span class="rechts klein" id="kl-hover"></span></h2>
+        <canvas id="kl-canvas"></canvas>
+      </section>
+      <section class="panel punkte-panel">
+        <h2>Messpunkte <span class="rechts klein" id="kl-punkte-titel"></span></h2>
+        <div class="raster-kl listen-kopf"><div>Nr.</div><div>Soll</div><div>Spannung</div><div>Strom</div><div>Leistung</div><div>Widerstand</div><div>Modus</div></div>
+        <div id="kl-punkte" class="liste"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ======================= Tab 5: Bauteile (SPM-19) ======================= -->
+  <div class="seite zweispaltig" id="seite-bauteile">
+    <div class="spalte-links">
+      <section class="panel">
+        <h2>Bauteilprüfung</h2>
+        <div class="formular">
+          <label>Messfunktion <select id="bt-funktion"></select></label>
+          <label>Prüfen auf <select id="bt-art"><option value="toleranz">Sollwert ± Toleranz</option><option value="bereich">Bereich von … bis</option></select></label>
+          <label data-art="toleranz">Sollwert <input type="text" id="bt-soll" placeholder="z. B. 4,7k"></label>
+          <label data-art="toleranz">Toleranz [%] <input type="text" id="bt-tol" inputmode="decimal"></label>
+          <label data-art="bereich" hidden>Von <input type="text" id="bt-min" placeholder="z. B. 0,55"></label>
+          <label data-art="bereich" hidden>Bis <input type="text" id="bt-max" placeholder="z. B. 0,7"></label>
+        </div>
+        <div class="zeile"><label class="klein"><input type="checkbox" id="bt-auto" checked> Automatisch zählen, sobald der Wert ruhig steht</label></div>
+        <div class="zeile"><label class="klein"><input type="checkbox" id="bt-ton" checked> Ton (hoch = gut, tief = schlecht)</label></div>
+        <p class="hinweis">Automatisch: Ein Bauteil gilt als gemessen, wenn der Wert dreimal hintereinander ruhig steht. Das nächste zählt erst, wenn dazwischen nichts angeschlossen war (Anzeige OL) oder sich der Wert deutlich geändert hat.</p>
+        <div class="zeile"><button id="bt-zaehlen" class="haupt">Jetzt zählen (Leertaste)</button><button id="bt-zurueck">Zurücksetzen</button><button id="bt-csv">Protokoll als CSV</button></div>
+      </section>
+      <section class="panel">
+        <h2>Zähler</h2>
+        <div class="kacheln">
+          <div class="kachel gut"><div class="name">Gut</div><div class="zahl" id="bt-gut">0</div></div>
+          <div class="kachel schlecht"><div class="name">Schlecht</div><div class="zahl" id="bt-schlecht">0</div></div>
+          <div class="kachel"><div class="name">Gesamt</div><div class="zahl" id="bt-gesamt">0</div></div>
+          <div class="kachel"><div class="name">Ausbeute</div><div class="zahl" id="bt-ausbeute">–</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="spalte-rechts">
+      <section class="panel urteil-panel">
+        <div class="urteil" id="bt-urteil">
+          <div class="u-wert" id="bt-wert">–</div>
+          <div class="u-text" id="bt-text">Nicht verbunden</div>
+          <div class="u-abw" id="bt-abw"></div>
+        </div>
+      </section>
+      <section class="panel punkte-panel">
+        <h2>Protokoll</h2>
+        <div class="raster-bt listen-kopf"><div>Nr.</div><div>Zeit</div><div>Wert</div><div>Abweichung</div><div>Urteil</div></div>
+        <div id="bt-protokoll" class="liste"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ======================= Tab 6: Vergleich (SPM-18) ======================= -->
+  <div class="seite zweispaltig" id="seite-vergleich">
+    <div class="spalte-links">
+      <section class="panel">
+        <h2>Vergleich</h2>
+        <div class="zeile"><button id="vg-laden" class="haupt">Aufzeichnung laden …</button><button id="vg-aktuell">Aktuelle Aufzeichnung dazu</button></div>
+        <div class="zeile segmente" id="vg-groesse">
+          <button data-g="u" class="aktiv">Spannung</button><button data-g="i">Strom</button><button data-g="p">Leistung</button><button data-g="dmm">Multimeter</button>
+        </div>
+        <div class="zeile"><label class="klein"><input type="checkbox" id="vg-ausrichten"> Am ersten Einschalten des Ausgangs ausrichten</label></div>
+        <p class="hinweis">Lädt CSV-Dateien dieses Programms, auch laufend gespeicherte. Die Zeitachse zählt ab dem Beginn jeder Aufzeichnung – oder, wenn angehakt, ab dem ersten Einschalten des Ausgangs.</p>
+      </section>
+      <section class="panel">
+        <h2>Aufzeichnungen</h2>
+        <div id="vg-liste"></div>
+      </section>
+    </div>
+    <div class="spalte-rechts">
+      <section class="panel diagramm-panel">
+        <h2><span id="vg-titel">Spannung</span><span class="rechts klein" id="vg-hover"></span></h2>
+        <canvas id="vg-canvas"></canvas>
+      </section>
+    </div>
   </div>
 </main>
 
@@ -568,23 +774,55 @@ class DemoGeraet {
     this.ausgang = false; this.uSoll = 12; this.iSoll = 1.5; this.ovp = 61; this.ocp = 10.5;
     this.funktion = 'VOLT:DC'; this.auto = true; this.hold = false; this.rel = false; this.relWert = 0;
     this.start = performance.now(); this.letzterDmm = null;
+    this.lastArt = 'widerstand';   // umschaltbar: widerstand | akku | led
+    this.akkuSoc = 0.3; this.akkuZeit = null;
   }
-  last() { const t = (performance.now() - this.start) / 1000; return 9 + 4 * Math.sin(t / 7) + 0.3 * Math.sin(t * 1.3); }
+  // Demo-Akku: eine Li-Ion-Zelle mit nur 5 mAh, damit eine Ladung in der Demo eine halbe Minute dauert
+  akkuLeerlauf() { return 3.3 + 0.9 * Math.min(Math.max(this.akkuSoc, 0), 1.05); }
+  widerstand() { const t = (performance.now() - this.start) / 1000; return 9 + 4 * Math.sin(t / 7) + 0.3 * Math.sin(t * 1.3); }
+  // Strom, den die Last bei der Klemmenspannung u zieht (monoton steigend)
+  lastStrom(u) {
+    if (this.lastArt === 'akku') return Math.max(0, (u - this.akkuLeerlauf()) / 0.15);
+    if (this.lastArt === 'led') {
+      // rote LED mit 8 Ω Vorwiderstand: u = Ud(i) + 8 Ω · i, Ud(i) = 1,75 V + 60 mV · ln(1 + i / 0,1 mA)
+      if (u <= 1.6) return 0;
+      let lo = 0, hi = 10;
+      for (let n = 0; n < 50; n++) { const m = (lo + hi) / 2; (1.75 + 0.06 * Math.log(1 + m / 1e-4) + 8 * m > u) ? hi = m : lo = m; }
+      return lo;
+    }
+    return u / this.widerstand();
+  }
   rauschen(a) { return (Math.random() - 0.5) * 2 * a; }
   psu() {
-    if (!this.ausgang) return { u: Math.abs(this.rauschen(0.002)), i: 0, modus: 0 };
-    const r = this.last();
-    if (this.uSoll / r > this.iSoll) return { u: this.iSoll * r + this.rauschen(0.004), i: this.iSoll + this.rauschen(0.001), modus: 2 };
-    return { u: this.uSoll + this.rauschen(0.003), i: this.uSoll / r + this.rauschen(0.001), modus: 1 };
+    const jetzt = performance.now();
+    const dt = this.akkuZeit === null ? 0 : (jetzt - this.akkuZeit) / 1000;
+    this.akkuZeit = jetzt;
+    let u, i, modus;
+    if (!this.ausgang) {
+      u = this.lastArt === 'akku' ? this.akkuLeerlauf() : 0; i = 0; modus = 0;
+    } else if (this.lastStrom(this.uSoll) <= this.iSoll) {
+      // Liegt der Akku über dem Sollwert, sieht man an den Klemmen seine Spannung - das Netzteil nimmt keinen Strom auf
+      u = this.lastArt === 'akku' ? Math.max(this.uSoll, this.akkuLeerlauf()) : this.uSoll; i = this.lastStrom(this.uSoll); modus = 1;
+    } else {
+      // Strombegrenzung: die Spannung suchen, bei der die Last genau iSoll zieht
+      let lo = 0, hi = this.uSoll;
+      for (let n = 0; n < 50; n++) { const m = (lo + hi) / 2; this.lastStrom(m) > this.iSoll ? hi = m : lo = m; }
+      u = lo; i = this.iSoll; modus = 2;
+    }
+    if (this.lastArt === 'akku') this.akkuSoc += i * dt / 18;   // 5 mAh = 18 As
+    return { u: Math.max(0, u + this.rauschen(0.002)), i: Math.max(0, i + (i ? this.rauschen(0.0005) : 0)), modus };
   }
   dmmSi() {
     const t = (performance.now() - this.start) / 1000;
+    // Widerstand: alle 5,5 s ein anderes Bauteil, dazwischen 1,5 s nichts angeschlossen (OL) - für die Bauteilprüfung
+    const teile = [4698, 4712, 4951, 4689, 4475, 4703];
+    const res = t % 5.5 < 4 ? teile[Math.floor(t / 5.5) % teile.length] + this.rauschen(0.6) : NaN;
     return {
       'VOLT:DC': 4.987 + 0.02 * Math.sin(t / 5) + this.rauschen(0.0004),
       'VOLT:AC': 230.4 + 1.5 * Math.sin(t / 9) + this.rauschen(0.05),
       'CURR:DC': 0.0472 + 0.004 * Math.sin(t / 4) + this.rauschen(0.00005),
       'CURR:AC': 0.312 + this.rauschen(0.002),
-      'RES': 4698 + this.rauschen(0.6),
+      'RES': res,
       'CAP': 1.003e-6 + this.rauschen(2e-9),
       'DIOD': 0.5821 + this.rauschen(0.0003),
       'CONT': 0.21 + this.rauschen(0.02),
@@ -595,6 +833,7 @@ class DemoGeraet {
     this.letzterDmm = x;
     if (this.rel) x -= this.relWert;
     const f = this.funktion;
+    if (!Number.isFinite(x)) return { text: 'OL', bereich: '20KOhm', si: NaN };
     const einheit = { V: 'V', A: 'A', 'Ω': 'Ohm', F: 'F' }[FUNKTIONEN[f].einheit];
     const a = Math.abs(x);
     let vors = '', fak = 1;
@@ -622,7 +861,7 @@ class DemoGeraet {
     if (b === 'CURR:LIM?') return this.ocp.toFixed(3);
     if (b === 'MULT:HOLD?') return this.hold ? '1' : '0';
     if (b === 'CONF:ALL?') { const d = this.dmmText(); return `${this.funktion},${d.text},${this.auto ? 'AUTO' : 'Manual'},${d.bereich}`; }
-    if (b === 'CONF?') { const d = this.dmmText(); return `${this.funktion} ${d.si >= 0 ? '+' : ''}${d.si.toExponential(4).toUpperCase()}`; }
+    if (b === 'CONF?') { const d = this.dmmText(); return Number.isFinite(d.si) ? `${this.funktion} ${d.si >= 0 ? '+' : ''}${d.si.toExponential(4).toUpperCase()}` : `${this.funktion} +9.9000E+37`; }
     if ((m = b.match(/^OUTP (ON|OFF|1|0)$/))) { this.ausgang = m[1] === 'ON' || m[1] === '1'; return null; }
     if ((m = b.match(/^VOLT ([\d.]+)$/))) { this.uSoll = +m[1]; return null; }
     if ((m = b.match(/^CURR ([\d.]+)$/))) { this.iSoll = +m[1]; return null; }
@@ -652,7 +891,13 @@ const zustand = {
   geraet: null, demo: false, laeuft: false, faehig: { psu: null, dmm: null },
   daten: [], letzter: null, funktion: null, dmmAuto: null, dmmBereich: null,
   hold: false, rel: false, ausgang: null, angehalten: null, hoverT: null, fehlerFolge: 0, gespeichert: 0,
+  ereignisse: [], offeneNotizen: [],   // Markierungen (von Hand und von den Automatiken)
 };
+
+// Andockstellen für die Zusatzfunktionen in js/: jede Messung, jedes Trennen, jeder Tabwechsel
+const messHoerer = [];
+const trennHoerer = [];
+const seitenHoerer = {};
 
 /* ---------- Konsole ---------- */
 
@@ -684,8 +929,10 @@ async function frage(befehl, wartezeit) {
   return a;
 }
 
-async function befehl(b) {
-  log(b, 'aus');
+// leise: nur mitschreiben, wenn „Abfragen mitschreiben“ an ist (Rampen schicken viele Befehle)
+async function befehl(b, leise = false) {
+  if (!zustand.geraet) return;
+  if (!leise || $('alles-loggen').checked) log(b, 'aus');
   try { await zustand.geraet.befehl(b); }
   catch (e) { log(e.message, 'err'); }
 }
@@ -759,7 +1006,8 @@ async function verbinden() {
 function demoStarten() {
   meldung('');
   zustand.geraet = new DemoGeraet(); zustand.demo = true;
-  statusSetzen('demo', 'Demo-Modus · kein echtes Gerät', 'OWON,SPM6103,DEMO0001,FV:V1.0.0');
+  zustand.geraet.lastArt = $('demo-last').value;
+  statusSetzen('demo', 'Demo-Modus', 'kein echtes Gerät');
   log('Demo-Modus gestartet', 'info');
   nachVerbinden();
 }
@@ -791,6 +1039,7 @@ async function trennen(grund) {
   zustand.geraet = null;
   if (g && !zustand.demo && !grund) { try { await g.befehl('SYST:LOC'); } catch {} }
   if (g) await g.schliessen();
+  for (const f of trennHoerer) { try { f(grund); } catch (e) { console.error(e); } }
   bedienungFreigeben(false);
   statusSetzen(grund ? 'fehler' : '', grund || 'Nicht verbunden');
   log(grund || 'Getrennt', grund ? 'err' : 'info');
@@ -952,9 +1201,16 @@ function kennwertAufnehmen(schluessel, v) {
   s.summe += v; s.n++;
 }
 
-// Jede Messung landet hier: Liste, Kennwerte und die aufsummierte Energie wachsen mit
+// Jede Messung landet hier: Liste, Kennwerte und die aufsummierte Energie wachsen mit,
+// offene Markierungen hängen sich an, danach sind die Zusatzfunktionen dran
 function aufnehmen(rec) {
+  if (zustand.offeneNotizen.length) { rec.notiz = zustand.offeneNotizen.join(' | '); zustand.offeneNotizen = []; }
   zustand.daten.push(rec);
+  statistikAufnehmen(rec);
+  for (const f of messHoerer) { try { f(rec); } catch (e) { console.error(e); } }
+}
+
+function statistikAufnehmen(rec) {
   const st = zustand.statistik;
   kennwertAufnehmen('u', rec.u); kennwertAufnehmen('i', rec.i); kennwertAufnehmen('p', rec.p);
   if (rec.dmmFunktion) kennwertAufnehmen('dmm:' + rec.dmmFunktion, rec.dmm);
@@ -1039,7 +1295,8 @@ function tabelleZeichnen() {
       + `<div class="i">${Number.isFinite(r.i) ? zahl(r.i, 3) + ' A' : leer}</div>`
       + `<div class="p">${Number.isFinite(r.p) ? zahl(r.p, 3) + ' W' : leer}</div>`
       + `<div>${modi[r.modus] ?? leer}</div><div>${r.ausgang === true ? 'EIN' : r.ausgang === false ? 'AUS' : leer}</div>`
-      + `<div class="d">${r.dmmText ? escapeHtml((f ? f.knopf + '  ' : '') + r.dmmText) : leer}</div></div>`;
+      + `<div class="d">${r.dmmText ? escapeHtml((f ? f.knopf + '  ' : '') + r.dmmText) : leer}</div>`
+      + `<div class="notiz" title="${r.notiz ? escapeHtml(r.notiz).replace(/"/g, '&quot;') : ''}">${r.notiz ? escapeHtml(r.notiz) : ''}</div></div>`;
   }
   ziel.style.top = (erste * ZEILE) + 'px';
   ziel.innerHTML = html;
@@ -1062,11 +1319,14 @@ function tabZeigen(id) {
   });
   document.querySelectorAll('.seite').forEach(s => s.classList.toggle('aktiv', s.id === id));
   if (id === 'seite-aufz') aufzeichnungAnzeigen(); else zeichnenAnfordern();
+  seitenHoerer[id]?.();
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => tabZeigen(t.dataset.seite)));
-// Strg+1 / Strg+2 wechseln die Tabs
+// Strg+1 … Strg+6 wechseln die Tabs in ihrer Reihenfolge
 window.addEventListener('keydown', e => {
-  if (e.ctrlKey && !e.altKey && (e.key === '1' || e.key === '2')) { tabZeigen(e.key === '1' ? 'seite-live' : 'seite-aufz'); e.preventDefault(); }
+  const tabs = [...document.querySelectorAll('.tab')];
+  const n = Number(e.key);
+  if (e.ctrlKey && !e.altKey && n >= 1 && n <= tabs.length) { tabZeigen(tabs[n - 1].dataset.seite); e.preventDefault(); }
 });
 
 function knoepfeAktualisieren() {
@@ -1149,6 +1409,9 @@ function schoeneSchritte(min, max, anzahl) {
   return { werte, schritt };
 }
 
+// So viele Nachkommastellen, dass jeder Rasterschritt genau dasteht (0,25 → 2, nicht „0,3“)
+const stellenFuer = schritt => (String(+schritt.toPrecision(6)).split('.')[1] || '').length;
+
 function zeichnen() {
   const daten = zustand.daten;
   const fenster = +$('fenster').value * 1000;
@@ -1213,7 +1476,7 @@ function zeichnen() {
     const raster = schoeneSchritte(min, max, 4);
     const achse = k.schluessel === 'dmm' ? technisch(Math.max(Math.abs(min), Math.abs(max)), einheit) : { einheit };
     const fak = achse.einheit.length > einheit.length ? VORSATZ[achse.einheit[0]] : 1;
-    const achsStellen = Math.max(0, -Math.floor(Math.log10(raster.schritt / fak) + 1e-9));
+    const achsStellen = stellenFuer(raster.schritt / fak);
     for (const v of raster.werte) {
       const yy = Math.round(y(v)) + 0.5;
       g.beginPath(); g.moveTo(RAND_L, yy); g.lineTo(RAND_L + iw, yy); g.stroke();
@@ -1254,6 +1517,20 @@ function zeichnen() {
     }
     spalteZeichnen();
     g.stroke();
+    // Markierungen: gestrichelte Linie in jeder Kurve, der Text nur in der obersten
+    g.strokeStyle = farbe('--warn'); g.fillStyle = farbe('--warn'); g.lineWidth = 1; g.setLineDash([4, 3]);
+    g.textAlign = 'left'; g.textBaseline = 'top'; g.font = '11px ' + farbe('--mono');
+    let frei = -Infinity;   // Text nur, wo er die vorige Beschriftung nicht überdeckt
+    for (const e of zustand.ereignisse) {
+      if (e.t < t0 || e.t > t1) continue;
+      const xx = Math.round(x(e.t)) + 0.5;
+      g.beginPath(); g.moveTo(xx, RAND_O); g.lineTo(xx, RAND_O + ih); g.stroke();
+      if (k !== KURVEN[0] || xx < frei) continue;
+      const text = e.text.length > 28 ? e.text.slice(0, 27) + '…' : e.text;
+      g.fillText(text, xx + 4, RAND_O + 2);
+      frei = xx + 4 + g.measureText(text).width + 10;
+    }
+    g.setLineDash([]);
     if (hoverRec) {
       const xx = Math.round(x(hoverRec.t)) + 0.5;
       g.strokeStyle = textFarbe; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -1280,17 +1557,22 @@ function schoeneZeitSchritte(spanne) {
 
 /* ---------- CSV ---------- */
 
-async function csvSpeichern() {
-  const z = v => Number.isFinite(v) ? String(v).replace('.', ',') : '';
+// Kopf und Zeilen der CSV-Datei - gemeinsam für „Als CSV speichern“ und das laufende Speichern (js/laufend.js)
+const CSV_KOPF = 'Zeit;Sekunden;Spannung [V];Strom [A];Leistung [W];Modus;Ausgang;OVP;OCP;OTP;Multimeter-Funktion;Multimeter-Wert (SI);Multimeter-Anzeige;Markierung';
+const csvZahl = v => Number.isFinite(v) ? String(v).replace('.', ',') : '';
+const csvText = s => String(s ?? '').replace(/[;\r\n]+/g, ' ');
+function csvZeile(r, t0) {
   const modi = { 0: 'Standby', 1: 'CV', 2: 'CC', 3: 'Fehler' };
+  const d = new Date(r.t);
+  const zeit = d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE') + ',' + String(d.getMilliseconds()).padStart(3, '0');
+  return [zeit, csvZahl((r.t - t0) / 1000), csvZahl(r.u), csvZahl(r.i), csvZahl(r.p), modi[r.modus] ?? '',
+    r.ausgang === null || r.ausgang === undefined ? '' : r.ausgang ? 'EIN' : 'AUS',
+    r.ovp ?? '', r.ocp ?? '', r.otp ?? '', FUNKTIONEN[r.dmmFunktion]?.name ?? r.dmmFunktion ?? '', csvZahl(r.dmm), csvText(r.dmmText), csvText(r.notiz)].join(';');
+}
+
+async function csvSpeichern() {
   const t0 = zustand.daten[0]?.t ?? 0;
-  const zeilen = ['Zeit;Sekunden;Spannung [V];Strom [A];Leistung [W];Modus;Ausgang;OVP;OCP;OTP;Multimeter-Funktion;Multimeter-Wert (SI);Multimeter-Anzeige'];
-  for (const r of zustand.daten) {
-    const d = new Date(r.t);
-    const zeit = d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE') + ',' + String(d.getMilliseconds()).padStart(3, '0');
-    zeilen.push([zeit, z((r.t - t0) / 1000), z(r.u), z(r.i), z(r.p), modi[r.modus] ?? '', r.ausgang === null || r.ausgang === undefined ? '' : r.ausgang ? 'EIN' : 'AUS',
-      r.ovp ?? '', r.ocp ?? '', r.otp ?? '', FUNKTIONEN[r.dmmFunktion]?.name ?? r.dmmFunktion ?? '', z(r.dmm), r.dmmText ?? ''].join(';'));
-  }
+  const zeilen = [CSV_KOPF, ...zustand.daten.map(r => csvZeile(r, t0))];
   const inhalt = '﻿' + zeilen.join('\r\n');
   const anzahl = zustand.daten.length;
   const s = new Date(t0);
@@ -1328,12 +1610,14 @@ for (const [schluessel, f] of Object.entries(FUNKTIONEN)) {
 $('verbinden').addEventListener('click', () => zustand.geraet ? trennen() : verbinden());
 $('demo').addEventListener('click', demoStarten);
 
-$('ausgang').addEventListener('click', async () => {
-  const neu = !zustand.ausgang;
-  await befehl('OUTP ' + (neu ? 'ON' : 'OFF'));
-  try { zustand.ausgang = zahlenAus(await frage('OUTP?'))[0] === 1; } catch { zustand.ausgang = neu; }
+// Ausgang schalten und den echten Zustand zurücklesen - auch für die Automatiken in js/
+async function ausgangSchalten(an, leise = false) {
+  if (!zustand.geraet) return;
+  await befehl('OUTP ' + (an ? 'ON' : 'OFF'), leise);
+  try { zustand.ausgang = zahlenAus(await frage('OUTP?'))[0] === 1; } catch { zustand.ausgang = an; }
   anzeigeAktualisieren();
-});
+}
+$('ausgang').addEventListener('click', () => ausgangSchalten(!zustand.ausgang));
 
 document.querySelectorAll('[data-setze]').forEach(knopf => {
   const feld = $(knopf.dataset.feld);
@@ -1388,6 +1672,7 @@ $('csv').addEventListener('click', csvSpeichern);
 $('leeren').addEventListener('click', () => {
   if (!confirm(`${zustand.daten.length.toLocaleString('de-DE')} Messpunkte verwerfen?`)) return;
   zustand.daten = []; zustand.letzter = null; zustand.gespeichert = 0; zustand.statistik = neueStatistik();
+  zustand.ereignisse = []; zustand.offeneNotizen = [];
   anzeigeAktualisieren();
 });
 
@@ -1662,5 +1947,15 @@ setInterval(() => { if (zustand.geraet && !zustand.angehalten) zeichnenAnfordern
 log('Bereit. „Verbinden“ wählt den COM-Port des Netzteils, „Demo“ zeigt alles ohne Gerät.', 'info');
 zeichnen();
 </script>
+<script src="js/gemeinsam.js"></script>
+<script src="js/vorlagen.js"></script>
+<script src="js/markierungen.js"></script>
+<script src="js/ueberwachung.js"></script>
+<script src="js/ablauf.js"></script>
+<script src="js/akku.js"></script>
+<script src="js/kennlinie.js"></script>
+<script src="js/laufend.js"></script>
+<script src="js/vergleich.js"></script>
+<script src="js/bauteile.js"></script>
 </body>
 </html>

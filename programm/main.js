@@ -118,8 +118,11 @@ function fensterOeffnen() {
             sandbox: true,
             // Messen soll auch minimiert im vollen Takt weiterlaufen
             backgroundThrottling: false,
+            // Alarmtöne auch ohne vorherigen Klick ins Fenster
+            autoplayPolicy: 'no-user-gesture-required',
         },
     });
+    fenster.on('focus', () => fenster.flashFrame(false));
 
     fenster.setMenuBarVisibility(false);
     const sitzung = fenster.webContents.session;
@@ -255,6 +258,71 @@ ipcMain.handle('fenstergroesse', (_e, breite, hoehe) => {
 });
 
 ipcMain.on('beenden', () => fenster?.close());   // fragt nach, wenn Messdaten ungespeichert sind
+
+/* ------------------------------------------------------------ Zusatzfunktionen: Taskleiste, Dateien */
+
+// Alarm, Abschaltung, Akku fertig: Taskleiste blinken lassen, bis das Fenster wieder vorn ist
+ipcMain.on('aufmerksamkeit', () => { if (fenster && !fenster.isFocused()) fenster.flashFrame(true); });
+
+// Laufend speichern: Vorgabe-Ordner, im Selbsttest ein eigener im Temp-Ordner
+const vorgabeOrdner = () => pruefen ? datei('aufzeichnungen') : path.join(app.getPath('documents'), 'OWON SPM6103');
+ipcMain.handle('ordner-vorgabe', () => vorgabeOrdner());
+ipcMain.handle('ordner-waehlen', async (_e, start) => {
+    const r = await dialog.showOpenDialog(fenster, {
+        title: 'Ordner für laufend gespeicherte Aufzeichnungen',
+        defaultPath: start || vorgabeOrdner(),
+        properties: ['openDirectory', 'createDirectory'],
+    });
+    return r.canceled ? null : r.filePaths[0];
+});
+ipcMain.handle('ordner-oeffnen', (_e, ordner) => {
+    try {
+        fs.mkdirSync(ordner, { recursive: true });
+        if (fs.statSync(ordner).isDirectory()) return shell.openPath(ordner);
+    } catch {
+        /* Ordner gibt es nicht */
+    }
+    return 'nicht gefunden';
+});
+
+// Offene Dateien des laufenden Speicherns; die Seite kennt nur die Nummer
+const offeneDateien = new Map();
+let naechsteDatei = 1;
+ipcMain.handle('datei-beginnen', (_e, ordner, name, kopf) => {
+    const sauber = path.basename(String(name)).replace(/[^\w.\-äöüÄÖÜß ]/g, '_');
+    if (!/\.csv$/i.test(sauber)) throw new Error('nur CSV-Dateien');
+    fs.mkdirSync(ordner, { recursive: true });
+    const pfad = path.join(ordner, sauber);
+    fs.writeFileSync(pfad, '﻿' + kopf + '\r\n', 'utf8');
+    const id = naechsteDatei++;
+    offeneDateien.set(id, pfad);
+    return { id, pfad };
+});
+ipcMain.handle('datei-anhaengen', (_e, id, text) => {
+    const pfad = offeneDateien.get(id);
+    if (!pfad) return false;
+    fs.appendFileSync(pfad, text, 'utf8');
+    return true;
+});
+ipcMain.handle('datei-schliessen', (_e, id) => offeneDateien.delete(id));
+
+// Vergleich: CSV-Dateien auswählen und lesen (im Selbsttest: alle aus dem Prüf-Ordner)
+ipcMain.handle('csv-oeffnen', async () => {
+    let pfade;
+    if (pruefen) {
+        const ordner = vorgabeOrdner();
+        pfade = fs.existsSync(ordner) ? fs.readdirSync(ordner).filter((n) => n.endsWith('.csv')).map((n) => path.join(ordner, n)) : [];
+    } else {
+        const r = await dialog.showOpenDialog(fenster, {
+            title: 'Aufzeichnungen zum Vergleich laden',
+            defaultPath: vorgabeOrdner(),
+            properties: ['openFile', 'multiSelections'],
+            filters: [{ name: 'CSV-Datei', extensions: ['csv'] }],
+        });
+        pfade = r.canceled ? [] : r.filePaths;
+    }
+    return pfade.slice(0, 6).map((p) => ({ name: path.basename(p), text: fs.readFileSync(p, 'utf8') }));
+});
 
 /* ------------------------------------------------------------ Versionspruefung */
 
@@ -419,6 +487,107 @@ function pruefenLaufen() {
             fs.writeFileSync(bildName('aufzeichnung'), (await frischesBild()).toPNG());
             await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click()");
 
+            /* ---------- Zusatzfunktionen SPM-10 bis SPM-19 ---------- */
+            const bisWahr = async (ausdruck, ms) => { for (let n = 0; n < ms / 250; n++) { if (await js(ausdruck)) return true; await warten(250); } return false; };
+            const jaImDialog = async () => { await warten(300); await js("document.querySelector('#frage-dialog [data-a=ja]').click()"); };
+            const zusatz = {};
+
+            // SPM-16 Laufend speichern: eine Datei für die ganze Sitzung
+            await js("document.getElementById('ls-an').click()");
+            await warten(1500);
+
+            // SPM-10 Vorlage „12 V“ bei eingeschaltetem Ausgang: erst Rückfrage, dann 12 V / 2 A mit passenden Grenzen
+            await js("[...document.querySelectorAll('#vorlagen .vorlage')].find(k => k.textContent.startsWith('12 V')).click()");
+            zusatz.vorlageFragt = await bisWahr("document.getElementById('frage-dialog').open", 2000);
+            await jaImDialog();
+            await warten(1500);
+            zusatz.vorlage = await js('zustand.soll');
+
+            // SPM-17 Markierung über die Taste M
+            await js("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }))");
+            await warten(300);
+            await js("document.querySelector('#frage-dialog input').value = 'Testmarke'");
+            await jaImDialog();
+            await warten(800);
+            zusatz.markierung = await js("({ ereignis: zustand.ereignisse.some(e => e.text === 'Testmarke'), inDaten: zustand.daten.some(r => r.notiz === 'Testmarke') })");
+
+            // SPM-12 Alarm „Strom über 0,5 A“ mit Abschalten
+            await js(`alRegeln.splice(0, alRegeln.length, { an: true, groesse: 'i', vergleich: 'ueber', wert: '500m', aktion: 'aus' }); alZeichnen();
+                document.getElementById('al-aktiv').click()`);
+            zusatz.alarm = await bisWahr("document.getElementById('alarm-leiste').classList.contains('sichtbar') && zustand.ausgang === false", 5000);
+            await js("document.getElementById('alarm-quittieren').click(); document.getElementById('al-aktiv').click()");
+
+            // SPM-11 Abschalten nach 3 s Ausgangszeit
+            await js(`for (const [id, w] of [['ab-zeit-an', true], ['ab-wh-an', false], ['ab-ah-an', false], ['ab-unter-an', false]]) document.getElementById(id).checked = w;
+                document.getElementById('ab-h').value = '0'; document.getElementById('ab-min').value = '0'; document.getElementById('ab-s').value = '3';
+                ausgangSchalten(true).then(() => document.getElementById('ab-start').click())`);
+            zusatz.abschalten = await bisWahr("document.getElementById('ab-status').textContent === 'abgeschaltet' && zustand.ausgang === false", 9000);
+
+            // SPM-13 Ablaufprogramm: 3 V, dann Rampe auf 6 V, je 2 s
+            await js(`apProgramm = { schritte: [{ volt: 3, curr: 1, dauer: 2, rampe: false }, { volt: 6, curr: 1, dauer: 2, rampe: true }], wdh: 1, ende: 'aus' }; apZeichnen();
+                document.getElementById('ap-start').click()`);
+            zusatz.ablaufLaeuft = await bisWahr("document.getElementById('ap-status').textContent === 'läuft'", 2000);
+            zusatz.ablauf = await bisWahr("document.getElementById('ap-status').textContent === 'fertig'", 10000);
+            zusatz.ablaufEnde = await js('({ volt: zustand.soll.volt, ausgang: zustand.ausgang })');
+
+            // SPM-15 Kennlinie an der Demo-LED: bricht ab, sobald 20 mA erreicht sind
+            await js(`document.getElementById('demo-last').value = 'led'; document.getElementById('demo-last').dispatchEvent(new Event('change'));
+                for (const [id, w] of [['kl-name', 'LED Test'], ['kl-von', '0'], ['kl-bis', '3'], ['kl-schritt', '0,1'], ['kl-strom', '0,02'], ['kl-warten', '200']]) document.getElementById(id).value = w;
+                document.querySelector('.tab[data-seite="seite-kennlinie"]').click(); document.getElementById('kl-messen').click()`);
+            await bisWahr("kl.laeuft", 2000);
+            await bisWahr("!kl.laeuft", 40000);
+            zusatz.kennlinie = await js("(() => { const k = klKurven.at(-1); const p = k.punkte.at(-1); return { punkte: k.punkte.length, letzterModus: p.modus, strom: p.i, status: document.getElementById('kl-status').textContent }; })()");
+            fs.writeFileSync(bildName('kennlinie'), (await frischesBild()).toPNG());
+
+            // SPM-14 Akku laden am Demo-Akku (Li-Ion, 5 mAh, halb leer); „voll“ schon nach 2 s unter dem Abschaltstrom
+            await js(`document.getElementById('demo-last').value = 'akku'; document.getElementById('demo-last').dispatchEvent(new Event('change')); zustand.geraet.akkuSoc = 0.3; AK_BESTAETIGUNG.s = 2;
+                for (const [id, w] of [['ak-typ', 'liion'], ['ak-zellen', '1'], ['ak-kap', '2000'], ['ak-strom', '1'], ['ak-schluss', '4,2'], ['ak-ende', '0,05'], ['ak-limit', '1']]) document.getElementById(id).value = w;
+                document.querySelector('.tab[data-seite="seite-auto"]').click(); document.getElementById('ak-start').click()`);
+            await jaImDialog();
+            await bisWahr("ak.laeuft", 3000);
+            await warten(6000);
+            fs.writeFileSync(bildName('automatik'), (await frischesBild()).toPNG());
+            await bisWahr("!ak.laeuft", 60000);
+            zusatz.akku = await js("({ status: document.getElementById('ak-status').textContent, mah: Math.round(ak.ladung / 3.6 * 100) / 100, ausgang: zustand.ausgang, info: document.getElementById('ak-info').textContent })");
+
+            // SPM-19 Bauteilprüfung: das Demo-Multimeter wechselt alle 5,5 s das Bauteil
+            await js(`document.getElementById('bt-funktion').value = 'RES'; document.getElementById('bt-art').value = 'toleranz';
+                document.getElementById('bt-soll').value = '4,7k'; document.getElementById('bt-tol').value = '5'; document.getElementById('bt-tol').dispatchEvent(new Event('change'));
+                document.querySelector('.tab[data-seite="seite-bauteile"]').click()`);
+            await bisWahr('bt.gut + bt.schlecht >= 2', 16000);
+            zusatz.bauteile = await js('({ gut: bt.gut, schlecht: bt.schlecht, protokoll: bt.protokoll.map(p => Math.round(p.v) + (p.gut ? " gut" : " schlecht")) })');
+            fs.writeFileSync(bildName('bauteile'), (await frischesBild()).toPNG());
+
+            // SPM-16 Datei prüfen: angelegt, mit Zeilen und der Markierung
+            await warten(1200);
+            const lsOrdner = datei('aufzeichnungen');
+            const lsDateien = fs.existsSync(lsOrdner) ? fs.readdirSync(lsOrdner) : [];
+            const lsText = lsDateien.length ? fs.readFileSync(path.join(lsOrdner, lsDateien[0]), 'utf8') : '';
+            zusatz.laufend = { dateien: lsDateien.length, zeilen: lsText.split('\r\n').filter(Boolean).length - 1, markierung: lsText.includes('Testmarke'), kopf: lsText.startsWith('﻿Zeit;Sekunden') };
+
+            // SPM-18 Vergleich: die laufend gespeicherte Datei laden und die aktuelle Aufzeichnung dazu
+            await js("document.querySelector('.tab[data-seite=\"seite-vergleich\"]').click(); document.getElementById('vg-laden').click()");
+            await warten(800);
+            await js("document.getElementById('vg-aktuell').click()");
+            await warten(500);
+            zusatz.vergleich = await js('({ reihen: vg.reihen.length, punkte: vg.reihen.map(r => r.punkte.length) })');
+            fs.writeFileSync(bildName('vergleich'), (await frischesBild()).toPNG());
+            await js("document.querySelector('.tab[data-seite=\"seite-aufz\"]').click()");
+            await warten(500);
+            fs.writeFileSync(bildName('aufzeichnung2'), (await frischesBild()).toPNG());
+            await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click()");
+            await warten(300);
+            zusatz.liveScrollt = await js("document.querySelector('main').scrollHeight > document.querySelector('main').clientHeight + 1");
+            fs.writeFileSync(bildName('live2'), (await frischesBild()).toPNG());
+
+            const z = zusatz;
+            const zusatzOk = z.vorlageFragt && z.vorlage.volt === 12 && z.vorlage.curr === 2 && z.vorlage.ovp === 13.1
+                && z.markierung.ereignis && z.markierung.inDaten && z.alarm && z.abschalten
+                && z.ablaufLaeuft && z.ablauf && z.ablaufEnde.volt === 6 && z.ablaufEnde.ausgang === false
+                && z.kennlinie.punkte >= 10 && z.kennlinie.letzterModus === 2 && z.akku.status === 'fertig' && z.akku.mah > 1 && z.akku.ausgang === false
+                && z.bauteile.gut + z.bauteile.schlecht >= 2 && z.laufend.dateien === 1 && z.laufend.zeilen > 50 && z.laufend.markierung && z.laufend.kopf
+                && z.vergleich.reihen === 2 && !z.liveScrollt;
+
             // Versionsvergleich
             const faelle = [['1.0.3', '1.0.2', 1], ['1.0.2', '1.0.2', 0], ['v1.10.0', '1.9.9', 1], ['1.0.2', '1.0.10', -1], ['2.0.0-beta', '2.0.0', -1], ['2.0', '2.0.0', 0]];
             const vergleich = faelle.filter(([a, b, soll]) => versionVergleich(a, b) !== soll).map((f) => f.join(' / '));
@@ -463,8 +632,8 @@ function pruefenLaufen() {
                 && vergleich.length === 0 && ['aktuell', 'neu', 'unbekannt'].includes(pruefung.symbol) && /^v\d+\.\d+\.\d+$/.test(pruefung.text)
                 && menue.offen && menue.punkte.length === 3 && update.dialog && update.knopf === 'neu' && update.menuePunkt
                 && groesse.vorher === '1920x1080' && groesse.fenster === '1600 x 900' && !groesse.quer && groesse.gespeichert.breite === 1600
-                && fehler.length === 0;
-            console.log(JSON.stringify({ ok, schnittstelle, portwahl, werte, flaeche, aufz, vergleich, pruefung, menue, update, groesse, fehler, bild: bildDatei }, null, 1));
+                && zusatzOk && fehler.length === 0;
+            console.log(JSON.stringify({ ok, zusatzOk, zusatz, schnittstelle, portwahl, werte, flaeche, aufz, vergleich, pruefung, menue, update, groesse, fehler, bild: bildDatei }, null, 1));
             app.exit(ok ? 0 : 1);
         } catch (e) {
             console.log(JSON.stringify({ ok: false, ausnahme: String(e), fehler }, null, 1));

@@ -1,8 +1,9 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.1.0 liegt auf `main` und als Release
-[v1.1.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.1.0) (`OWON-SPM6103.exe`, nicht signiert).
-Selbsttest: `npx electron . --pruefen=bild.png` in `programm/`.
+Stand 06.10.2026: Version 1.2.0 liegt auf `main` und als Release
+[v1.2.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.2.0) (`OWON-SPM6103.exe`, nicht signiert).
+Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
+einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
 **Am echten Gerät bestätigt** (Marcos Bild vom 06.10., Version 1.0.1): Verbinden klappt, und die
 Antworten haben genau das Format aus OWONs Anleitung – `MEAS:ALL:INFO?` liefert sieben Werte
@@ -18,8 +19,18 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 - **Am echten Netzteil noch ausprobieren:** Ausgang ein/aus, Sollwerte und OVP/OCP setzen, CV/CC unter
   Last, die übrigen Multimeter-Funktionen, Messbereich, Hold und Relativ, CSV speichern.
   Passt etwas nicht: in der SCPI-Konsole „Abfragen mitschreiben“ anhaken und die Ausgabe an Claude geben.
-  Das ist auch die Voraussetzung für SPM-10 bis SPM-14: die bauen alle darauf, dass `VOLT`, `CURR` und
-  `OUTP` am echten Gerät wirken.
+  Davon hängen Vorlagen, Abschalten, Alarme mit Abschalten, Ablaufprogramm, Akku laden und Kennlinie ab:
+  sie alle setzen `VOLT`, `CURR`, `VOLT:LIM`, `CURR:LIM` und `OUTP`.
+- **Bauteilprüfung am echten Multimeter:** Wie meldet das SPM6103 „nichts angeschlossen“ in `CONF:ALL?`
+  (Anzeige OL)? Das Programm erwartet einen Wert, der keine Zahl ist. Kommt stattdessen eine sehr große
+  Zahl, zählt die Prüfung nicht von selbst weiter – dann die Konsolen-Ausgabe an Claude geben.
+
+## Umgesetzt
+
+- 06.10., Version 1.2.0: **SPM-10 bis SPM-19** (Vorlagen, Abschalten, Alarme, Ablaufprogramm, Akku laden,
+  Kennlinie, laufend speichern, Markierungen, Vergleich, Bauteilprüfung). Neue Tabs „Automatik“,
+  „Kennlinie“, „Bauteile“, „Vergleich“; der Code der Zusatzfunktionen liegt in `programm/app/js/`.
+  Alles nur im Demo-Modus geprüft.
 
 ## Offene Vorschläge
 
@@ -43,24 +54,7 @@ nie neu vergeben. Vergeben sind SPM-1 bis SPM-19, **die nächste ist SPM-20**.
 |---|---|
 | SPM-9 | **Repo öffentlich schalten** (Marco, 06.10.: „kann auf die Todo-Liste“). Am 06.10. geprüft: Im Verlauf liegen weder OWONs PDF noch eine .exe noch Passwörter oder Schlüssel. Sinnvoll vorher: SPM-7 (Lizenz, README). Dann `gh repo edit 3d-cnc/OWON-SPM6103 --visibility public --accept-visibility-change-consequences`. Ab da funktioniert die Versionsprüfung (graues Symbol wird grün/rot), und SPM-2 und SPM-3 werden möglich. |
 
-### Funktionen im Programm (Vorschläge vom 06.10.)
-
-Sicherheitshinweis zu SPM-11, SPM-12 und SPM-14: Abschalten per Programm hängt an PC und USB-Kabel.
-Die harte Grenze bleiben OVP und OCP im Gerät; das Programm setzt sie deshalb immer passend mit.
-
-| Nr. | Vorschlag |
-|---|---|
-| SPM-10 | **Sollwert-Vorlagen:** Lieblingswerte wie 3,3 V / 0,5 A, 5 V / 1 A, 12 V / 2 A als Knöpfe, mit Namen („ESP32“, „Lüfter“), selbst anlegbar. Ein Klick setzt Spannung, Strom, OVP und OCP; bei eingeschaltetem Ausgang erst nach Rückfrage. |
-| SPM-11 | **Abschaltbedingungen:** Ausgang automatisch aus nach einer Zeit, nach einer Energie (Wh) oder Ladung (Ah), oder wenn der Strom unter einen Wert fällt (z. B. Akku voll). Mit Restzeit-Anzeige und Eintrag in der Aufzeichnung. |
-| SPM-12 | **Grenzwerte mit Alarm:** eigene Schwellen für U, I, P und den Multimeter-Wert (z. B. „Strom über 1,5 A“, „Spannung am DMM unter 11 V“). Wird eine überschritten: Ton, rote Leiste, blinkende Taskleiste, wahlweise Ausgang aus. |
-| SPM-13 | **Ablaufprogramm:** Schritte mit Spannung, Strom und Dauer, auch als Rampe (z. B. 0→12 V in 30 s), wiederholbar, speicherbar. Für Einschaltversuche, Dauertests, langsames Hochfahren von Motoren. |
-| SPM-14 | **Akku laden:** Vorgaben für Li-Ion, LiFePO4, Blei, NiMH (Zellenzahl, Kapazität). CC/CV-Ladung mit Ende bei kleinem Strom oder nach Zeit, Ladekurve und geladene Ah. Baut auf SPM-11 auf. |
-| SPM-15 | **U-I-Kennlinie aufnehmen:** Spannung in Schritten hochfahren, je Schritt den Strom messen, als Kennlinie zeichnen (I über U) und als CSV speichern. Für LEDs, Dioden, Motoren, Heizdrähte. |
-| SPM-16 | **Laufend speichern:** Die Aufzeichnung schreibt während der Messung fortlaufend in eine CSV-Datei, wahlweise automatisch gestartet und gestoppt mit dem Ausgang. Nach einem Absturz oder Stromausfall ist nichts verloren. |
-| SPM-17 | **Markierungen:** per Taste (z. B. M) oder Knopf einen Zeitpunkt mit kurzem Text markieren („Lüfter an“, „Last 2 dazu“). Sichtbar als Linie in den Kurven, als Zeile in der Tabelle und als Spalte in der CSV-Datei. |
-| SPM-18 | **Aufzeichnungen laden und vergleichen:** eine gespeicherte CSV-Datei wieder öffnen, in Kurven und Kennwerten ansehen und über die aktuelle Messung legen (vorher/nachher). |
-| SPM-19 | **Bauteilprüfung Gut/Schlecht:** Sollwert mit Toleranz eingeben (z. B. 4,7 kΩ ± 5 %), das Multimeter zeigt groß Grün oder Rot, zählt gute und schlechte Teile und schreibt ein Protokoll. Zum Sortieren von Widerständen, Kondensatoren, Dioden. |
-
 SPM-1 und SPM-2 sind Alternativen; Marco entscheidet. Verworfen, weil nicht kostenlos oder ohne
 Nutzen: ein selbst signiertes Zertifikat (SmartScreen warnt trotzdem), Azure Artifact Signing
 (9,99 $ im Monat, in der EU nur für Firmen), gekaufte Zertifikate (meist über 100 € im Jahr).
+Wortlaut der umgesetzten Vorschläge SPM-10 bis SPM-19: `git log -p OFFEN.md`.

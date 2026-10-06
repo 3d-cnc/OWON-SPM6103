@@ -13,4 +13,13 @@ contextBridge.exposeInMainWorld('spm', {
     fenstergroesse: (breite, hoehe) => ipcRenderer.invoke('fenstergroesse', breite, hoehe),
     linkOeffnen: (url) => ipcRenderer.send('link-oeffnen', url),
     beenden: () => ipcRenderer.send('beenden'),
+    // Zusatzfunktionen: Taskleiste blinken, laufend speichern, Aufzeichnungen laden
+    aufmerksamkeit: () => ipcRenderer.send('aufmerksamkeit'),
+    ordnerVorgabe: () => ipcRenderer.invoke('ordner-vorgabe'),
+    ordnerWaehlen: (start) => ipcRenderer.invoke('ordner-waehlen', start),
+    ordnerOeffnen: (ordner) => ipcRenderer.invoke('ordner-oeffnen', ordner),
+    dateiBeginnen: (ordner, name, kopf) => ipcRenderer.invoke('datei-beginnen', ordner, name, kopf),
+    dateiAnhaengen: (id, text) => ipcRenderer.invoke('datei-anhaengen', id, text),
+    dateiSchliessen: (id) => ipcRenderer.invoke('datei-schliessen', id),
+    csvOeffnen: () => ipcRenderer.invoke('csv-oeffnen'),
 });

@@ -46,18 +46,58 @@ Tab "Live" (Strg+1):
   Ausgang ein/aus, Sollwerte für Spannung, Strom, OVP und OCP setzen
 - Multimeter: Messwert live, Funktion wählen (V DC/AC, A DC/AC, Ohm, C,
   Diode, Durchgang), Messbereich, Hold, Relativ
+- Vorlagen: Lieblingswerte als Knöpfe (z. B. 5 V USB). Ein Klick setzt
+  Spannung, Strom, OVP und OCP; ist der Ausgang an, fragt das Programm vorher.
+  "+" speichert die aktuellen Sollwerte als neue Vorlage, Rechtsklick löscht.
+- Laufende Automatiken stehen als grüne Anzeige neben CV/CC, mit Stopp-Knopf
 - SCPI-Konsole, um beliebige Befehle von Hand zu schicken
 - Verlauf: vier Kurven mit Min/Max/Mittel im Zeitfenster, Werte unter der Maus
+- Markierung (Taste M): Zeitpunkt mit Notiz markieren. Erscheint als Linie in
+  den Kurven, in der Tabelle der Aufzeichnung und in der CSV-Datei.
 
 Tab "Aufzeichnung" (Strg+2):
 - Messpunkte, Dauer, Beginn, ob schon als CSV gespeichert
 - Als CSV speichern (Semikolon, Dezimalkomma, öffnet direkt in Excel), Leeren
+- Laufend speichern: schreibt schon während der Messung in eine CSV-Datei
+  (Vorgabe-Ordner: Dokumente\OWON SPM6103). Eine Datei für die ganze Sitzung
+  oder je Einschalten des Ausgangs eine neue. Nach einem Absturz ist nichts weg.
 - Abgegebene Energie (Wh) und Ladung (Ah), Zeit mit Ausgang EIN, Zeit in CV/CC
 - Min/Max/Mittel der ganzen Aufzeichnung, auch je Multimeter-Funktion
-- Tabelle aller Messpunkte; "Neueste anzeigen" läuft mit, Hochscrollen hält an
+- Tabelle aller Messpunkte mit Markierungen; "Neueste anzeigen" läuft mit
+
+Tab "Automatik" (Strg+3):
+- Abschalten: Ausgang aus nach einer Zeit, nach x Wh, nach x mAh oder wenn
+  der Strom eine Weile unter einen Wert fällt
+- Grenzwerte und Alarme: eigene Regeln wie "Strom über 1,5 A" oder
+  "Multimeter unter 11 V". Ton, rote Leiste, blinkende Taskleiste, wahlweise
+  Ausgang aus. Werte mit Vorsatz gehen auch: 500m, 4,7k.
+- Ablaufprogramm: Schritte mit Spannung, Strom und Dauer, auch als Rampe,
+  mit Wiederholungen; Programme unter Namen speichern
+- Akku laden: Li-Ion/LiPo, LiHV, LiFePO4, Blei, NiMH. Das Programm schlägt
+  Ladestrom, Ladeschluss und Abschaltstrom vor, lädt CC/CV und schaltet ab,
+  wenn der Akku voll ist (NiMH nach Zeit). Lithium nur unter Aufsicht laden!
+
+Tab "Kennlinie" (Strg+4):
+- Spannung in Schritten hochfahren und je Schritt den Strom messen; Kurve
+  "Strom über Spannung", Tabelle, CSV. Mehrere Kurven bleiben zum Vergleich.
+  Bei LEDs und Dioden eine kleine Strombegrenzung wählen (z. B. 20 mA).
+
+Tab "Bauteile" (Strg+5):
+- Bauteile mit dem Multimeter prüfen: Sollwert ± Toleranz oder Bereich.
+  Großes GUT/AUSSERHALB, Zähler, Ausbeute, Protokoll als CSV. Zählt von selbst,
+  sobald der Wert ruhig steht; Leertaste zählt von Hand.
+
+Tab "Vergleich" (Strg+6):
+- Gespeicherte CSV-Dateien (auch laufend gespeicherte) und die aktuelle
+  Aufzeichnung übereinanderlegen; Zeit ab Beginn oder ab erstem Einschalten
+
+Sicherheit: Abschalten, Alarme und Akku-Ende hängen an PC und USB-Kabel. Die
+harte Grenze bleiben OVP und OCP im Gerät – das Programm setzt sie bei
+Vorlagen, Ablauf, Kennlinie und Akku passend mit.
 
 Außerdem:
-- Demo-Modus ohne Gerät
+- Demo-Modus ohne Gerät; im Demo-Modus lässt sich die Last umschalten
+  (Widerstand, Akku, LED), und das Multimeter misst wechselnde Widerstände
 - Misst auch minimiert im vollen Takt weiter
 - Fragt beim Beenden nach, wenn Messdaten noch nicht gespeichert sind
 - Merkt sich Fensterposition, Fenstergröße beim Start, Baudrate, Abfragetakt

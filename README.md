@@ -2,8 +2,12 @@
 
 Windows-Programm, das Messwerte des Labornetzteils mit Multimeter **OWON SPM6103** live anzeigt und aufzeichnet. Es spricht über USB (CH340, SCPI) direkt mit dem Gerät und läuft als einzelne portable .exe.
 
-- **Tab „Live“:** Spannung, Strom und Leistung, CV/CC, Schutzmeldungen, Ausgang und Sollwerte. Dazu der Multimeter-Wert mit Wahl der Messfunktion und des Messbereichs, eine SCPI-Konsole und vier Kurven.
-- **Tab „Aufzeichnung“:** CSV-Export für Excel, Energie (Wh) und Ladung (Ah), Kennwerte der ganzen Aufzeichnung und eine Tabelle aller Messpunkte.
+- **Tab „Live“:** Spannung, Strom und Leistung, CV/CC, Schutzmeldungen, Ausgang, Sollwerte und Sollwert-Vorlagen. Dazu der Multimeter-Wert mit Wahl der Messfunktion und des Messbereichs, eine SCPI-Konsole, vier Kurven und Markierungen mit Notiz (Taste M).
+- **Tab „Aufzeichnung“:** CSV-Export für Excel, laufendes Speichern während der Messung, Energie (Wh) und Ladung (Ah), Kennwerte der ganzen Aufzeichnung und eine Tabelle aller Messpunkte.
+- **Tab „Automatik“:** Abschalten nach Zeit, Wh, mAh oder bei kleinem Strom; Grenzwerte mit Alarm; Ablaufprogramme mit Rampen; Akku laden (Li-Ion, LiHV, LiFePO4, Blei, NiMH).
+- **Tab „Kennlinie“:** U-I-Kennlinien aufnehmen, etwa von LEDs, Dioden oder Motoren, mehrere Kurven im Vergleich.
+- **Tab „Bauteile“:** Bauteile mit dem Multimeter prüfen (Gut/Schlecht, Zähler, Protokoll).
+- **Tab „Vergleich“:** gespeicherte Aufzeichnungen und die aktuelle übereinanderlegen.
 - **Menü:** Nach Updates suchen, Fenstergröße beim Start (Vorgabe 1920 × 1080) und Beenden.
 - **Versionsprüfung:** Neben dem Namen stehen die Version und ein Symbol. Es ist grün, wenn das Programm aktuell ist, rot, wenn es ein Update gibt, und grau, wenn sich das nicht prüfen lässt. Gefragt wird nach dem neuesten GitHub-Release dieses Repositorys.
 - Ein Demo-Modus funktioniert ohne Gerät.
@@ -15,6 +19,8 @@ Bedienung und Fehlersuche: [LIESMICH.txt](LIESMICH.txt). Stand und offene Punkte
 | Pfad | Inhalt |
 |---|---|
 | `programm/app/index.html` | Oberfläche und Gerätelogik (Web Serial, SCPI, Kurven, Aufzeichnung, Demo-Gerät) |
+| `programm/app/js/` | Zusatzfunktionen, je eine Datei: Vorlagen, Markierungen, Überwachung (Abschalten, Alarme), Ablauf, Akku, Kennlinie, laufend speichern, Vergleich, Bauteile; gemeinsame Bausteine in `gemeinsam.js` |
+| `programm/app/funktionen.css` | Aussehen der Zusatzfunktionen |
 | `programm/main.js` | Electron-Hülle: Fenster 1920 × 1080, Auswahl des COM-Ports, Speicherdialog, Selbsttest |
 | `programm/preload.js` | Brücke zwischen Seite und Programm (`window.spm`) |
 | `programm/build/icon.png` | Programmsymbol |
@@ -43,6 +49,7 @@ Der Selbsttest startet das Programm in einem durchsichtigen Fenster im Demo-Modu
 - dass die Live-Seite auf 1920 × 1080 ohne Scrollen passt,
 - dass viele Konsolen-Einträge den Verlauf nicht zusammendrücken,
 - den Versionsvergleich, die Versionsprüfung, das Menü und den Update-Hinweis,
-- dass ein Wechsel der Fenstergröße auf 1600 × 900 sofort gilt und gespeichert wird.
+- dass ein Wechsel der Fenstergröße auf 1600 × 900 sofort gilt und gespeichert wird,
+- jede Zusatzfunktion einmal echt: Vorlage, Markierung, Alarm mit Abschalten, Abschalten nach Zeit, Ablauf mit Rampe, Kennlinie an der Demo-LED, Ladung des Demo-Akkus bis „voll“, Bauteilprüfung, laufendes Speichern und Laden der Datei im Vergleich.
 
 Dabei speichert er Bilder der Tabs, des Menüs und der Dialoge. Bei einem Fehler endet er mit Exit-Code 1. Er funktioniert auch mit der fertigen .exe.

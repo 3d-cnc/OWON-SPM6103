@@ -23,6 +23,10 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
   Kennlinie, Erst-Einschalten und Zyklentest ab: sie alle setzen `VOLT`, `CURR`, `VOLT:LIM`, `CURR:LIM` und `OUTP`.
 - **Fernanzeige mit dem echten Handy:** einschalten, Windows-Firewall „Zugriff zulassen“ (private Netzwerke),
   QR-Code scannen. Geprüft ist sie bisher nur auf demselben PC (127.0.0.1).
+- **Entschieden (06.10.):** Die Fernanzeige bleibt bei http; „Nicht sicher“ im Handy-Browser nimmt Marco
+  in Kauf (Variante A). Verworfen: selbst erstelltes Zertifikat (große Warnseite statt kleinem Hinweis)
+  und echtes Let's-Encrypt-Zertifikat über eine Subdomain von cnc3d.tech (DNS-Eintrag auf die Adresse im
+  Heimnetz, Ausnahme gegen DNS-Rebinding in der Fritz!Box, Verlängerung alle 90 Tage, nur für Marco nutzbar).
 - **Bauteilprüfung am echten Multimeter:** Wie meldet das SPM6103 „nichts angeschlossen“ in `CONF:ALL?`
   (Anzeige OL)? Das Programm erwartet einen Wert, der keine Zahl ist. Kommt stattdessen eine sehr große
   Zahl, zählt die Prüfung nicht von selbst weiter – dann die Konsolen-Ausgabe an Claude geben.

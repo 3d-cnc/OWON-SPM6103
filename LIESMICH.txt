@@ -122,6 +122,13 @@ er im Programm erlaubt ist. Beim ersten Einschalten fragt die Windows-Firewall:
 "Zugriff zulassen" für private Netzwerke wählen. Die Fernanzeige läuft nur,
 solange sie eingeschaltet ist; beim nächsten Start ist sie wieder aus.
 
+Das Handy zeigt neben der Adresse "Nicht sicher". Das liegt daran, dass die
+Seite über http läuft, also unverschlüsselt – Handy-Browser markieren jede
+solche Seite so, auch im eigenen WLAN. Die Seite funktioniert trotzdem normal.
+Mitlesen könnte nur, wer im selben WLAN ist; aus dem Internet ist die
+Fernanzeige nicht erreichbar. Deshalb nur im eigenen, verschlüsselten WLAN
+benutzen, nicht in einem offenen Gäste-Netz.
+
 Außerdem:
 - Demo-Modus ohne Gerät; im Demo-Modus lässt sich die Last umschalten
   (Widerstand, Akku, LED), und das Multimeter misst wechselnde Widerstände

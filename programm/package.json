@@ -1,9 +1,13 @@
 {
     "name": "owon-spm6103",
     "productName": "OWON SPM6103",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "description": "Live-Anzeige und Steuerung fuer das Labornetzteil mit Multimeter OWON SPM6103",
     "author": "cnc3d.tech",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/3d-cnc/OWON-SPM6103"
+    },
     "private": true,
     "type": "commonjs",
     "main": "main.js",

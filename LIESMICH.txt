@@ -23,8 +23,23 @@ immer nur von einem Programm gleichzeitig benutzt werden.
 
 Was das Programm kann
 ---------------------
-Das Fenster ist auf 1920 x 1080 ausgelegt und öffnet sich in dieser Größe.
-Auf kleineren Bildschirmen startet es maximiert und ordnet die Felder um.
+Das Fenster ist auf 1920 x 1080 ausgelegt und öffnet sich in dieser Größe
+(änderbar im Menü). Auf kleineren Bildschirmen startet es maximiert und ordnet
+die Felder um.
+
+Oben links:
+- Menü (Knopf mit den drei Strichen): Nach Updates suchen, Fenstergröße beim
+  Start (1280 x 720 bis 3840 x 2160 oder eigene), Beenden (Strg+Q)
+- Neben dem Namen die Version mit Symbol, ein Klick öffnet die Versionsprüfung:
+    grün ✓  auf dem neuesten Stand
+    rot  ↑  Update verfügbar, "Update herunterladen" öffnet die Seite auf GitHub
+    grau ?  Prüfung nicht möglich (keine Verbindung, oder das Projekt ist auf
+            GitHub noch nicht öffentlich)
+
+Versionsprüfung: Beim Start fragt das Programm einmal bei GitHub
+(api.github.com) nach der neuesten Version. Übertragen wird dabei nur die
+Anfrage selbst mit der installierten Versionsnummer, keine Messdaten. Abschalten
+lässt sich das im Fenster "Version und Updates".
 
 Tab "Live" (Strg+1):
 - Netzteil: Spannung, Strom und Leistung live, CV/CC, OVP/OCP/OTP-Meldungen,
@@ -45,7 +60,8 @@ Außerdem:
 - Demo-Modus ohne Gerät
 - Misst auch minimiert im vollen Takt weiter
 - Fragt beim Beenden nach, wenn Messdaten noch nicht gespeichert sind
-- Merkt sich Fensterposition, Baudrate, Abfragetakt und Zeitfenster
+- Merkt sich Fensterposition, Fenstergröße beim Start, Baudrate, Abfragetakt
+  und Zeitfenster
 
 Beim Trennen und Beenden schickt das Programm SYST:LOC, damit die Tasten am
 Gerät wieder gehen.

@@ -84,8 +84,8 @@ main { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; }
 #ausgang.an { background: var(--ok); color: #04210f; border-color: transparent; }
 .sollwerte { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
 .sollwert { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
-.sollwert .name { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
-.sollwert .name b { font-family: var(--mono); color: var(--text); font-weight: 400; }
+.sollwert .name { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 6px; }
+.sollwert .name b { font-family: var(--mono); color: var(--text); font-weight: 400; white-space: nowrap; }   /* Wert nie mitten durchbrechen */
 .sollwert .eingabe { display: flex; gap: 6px; margin-top: 6px; }
 .sollwert .eingabe input { min-width: 0; font-family: var(--mono); }
 .sollwert .eingabe button { padding: 5px 9px; }
@@ -141,9 +141,49 @@ table.kennwerte tr:last-child td { border-bottom: 0; }
 .tz .gedimmt { color: var(--muted); }
 .tabelle-leer { color: var(--muted); padding: 24px 12px; }
 
-#portwahl { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 18px; width: min(520px, calc(100vw - 32px)); }
-#portwahl::backdrop { background: rgba(0, 0, 0, .55); }
-#portwahl h3 { margin: 0 0 4px; font-size: 16px; }
+/* ---------- Menü, Version, Dialoge ---------- */
+#menue-knopf { padding: 6px 8px; line-height: 0; }
+#menue-knopf[aria-expanded="true"] { background: var(--knopf-hover); }
+.menue { position: fixed; z-index: 20; min-width: 290px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-shadow: 0 14px 36px rgba(0, 0, 0, .45); display: none; }
+.menue.offen { display: block; }
+.menue button { display: flex; width: 100%; align-items: center; gap: 24px; background: transparent; border: 0; text-align: left; padding: 8px 10px; border-radius: 6px; }
+.menue button:hover, .menue button:focus-visible { background: var(--knopf-hover); outline: none; }
+.menue button > span:first-child { flex: 1; }
+.menue kbd { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.menue hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.menue .punkt-neu { width: 8px; height: 8px; border-radius: 50%; background: var(--err); display: none; }
+.menue.update .punkt-neu { display: inline-block; }
+#version-knopf { display: flex; align-items: center; gap: 7px; padding: 3px 10px 3px 6px; border-radius: 99px; font-family: var(--mono); font-size: 12px; color: var(--muted); background: transparent; }
+#version-knopf:hover { background: var(--knopf); color: var(--text); }
+.v-symbol { width: 16px; height: 16px; flex: none; border-radius: 50%; display: inline-grid; place-items: center; font: 700 11px/1 "Segoe UI", sans-serif; color: var(--panel); background: var(--muted); }
+.aktuell .v-symbol { background: var(--ok); }
+.neu .v-symbol { background: var(--err); color: #fff; }
+#version-knopf.neu { border-color: var(--err); color: var(--err); }
+.pruefe .v-symbol { animation: puls 1s ease-in-out infinite; }
+@keyframes puls { 50% { opacity: .3; } }
+
+dialog.fenster { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 18px; width: min(560px, calc(100vw - 32px)); }
+dialog.fenster::backdrop { background: rgba(0, 0, 0, .55); }
+dialog.fenster h3 { margin: 0 0 4px; font-size: 16px; }
+dialog.fenster .rechtsbuendig { justify-content: flex-end; }
+.v-status { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; padding: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; }
+.v-status .v-symbol { width: 26px; height: 26px; font-size: 15px; }
+.v-status b { font-size: 15px; }
+.v-status .hinweis { margin-top: 2px; }
+.v-tabelle { border-collapse: collapse; width: 100%; font-size: 13px; }
+.v-tabelle td { padding: 4px 0; border-bottom: 1px solid var(--line); }
+.v-tabelle td:first-child { color: var(--muted); width: 45%; }
+.v-tabelle td:last-child { font-family: var(--mono); }
+#v-notizen { white-space: pre-wrap; font: 12px/1.5 var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 6px 0 0; max-height: 200px; overflow: auto; }
+.v-zwischen { color: var(--muted); font-size: 12px; margin-top: 12px; }
+.groessen { display: grid; gap: 4px; margin-top: 12px; }
+.groessen label { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.groessen label:hover { background: var(--panel2); }
+.groessen label.gesperrt { opacity: .45; cursor: default; }
+.groessen .masse { font-family: var(--mono); min-width: 120px; }
+.groessen small { color: var(--muted); }
+.groessen input[type=text] { width: 80px; font-family: var(--mono); }
+#g-info.fehler { color: var(--err); }
 #portliste { display: grid; gap: 6px; margin-top: 12px; max-height: 50vh; overflow: auto; }
 #portliste .port { display: grid; grid-template-columns: 70px 1fr; gap: 0 10px; text-align: left; padding: 9px 12px; }
 #portliste .port b { font-family: var(--mono); grid-row: span 2; align-self: center; }
@@ -151,8 +191,9 @@ table.kennwerte tr:last-child td { border-bottom: 0; }
 #portliste .port.aktiv { outline: 2px solid var(--i); outline-offset: -2px; }
 #portliste .leer { color: var(--muted); margin: 6px 0; }
 
-/* Ausgelegt auf 1920 x 1080; kleinere Fenster ordnen um und scrollen */
-@media (max-width: 1500px), (max-height: 860px) {
+/* Ausgelegt auf 1920 x 1080; kleinere Fenster ordnen um und scrollen - unter etwa 1000 px Höhe
+   würden die vier Kurven sonst zu flach (z. B. bei 1600 x 900) */
+@media (max-width: 1500px), (max-height: 980px) {
   .seite.aktiv { height: auto; }
   #seite-live { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: none; }
   .konsole { grid-column: 1 / -1; }
@@ -170,7 +211,11 @@ table.kennwerte tr:last-child td { border-bottom: 0; }
 </head>
 <body>
 <header>
+  <button id="menue-knopf" title="Menü" aria-haspopup="menu" aria-expanded="false" aria-controls="menue">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
   <h1>OWON SPM6103</h1>
+  <button id="version-knopf" title="Version und Updates"><span class="v-symbol">…</span><span id="version-text">v–</span></button>
   <nav class="tabs" role="tablist">
     <button class="tab aktiv" role="tab" data-seite="seite-live">Live</button>
     <button class="tab" role="tab" data-seite="seite-aufz">Aufzeichnung<span class="zaehler" id="tab-zaehler"></span></button>
@@ -317,7 +362,48 @@ table.kennwerte tr:last-child td { border-bottom: 0; }
   </div>
 </main>
 
-<dialog id="portwahl">
+<div class="menue" id="menue" role="menu" aria-labelledby="menue-knopf">
+  <button role="menuitem" data-aktion="updates"><span>Nach Updates suchen …</span><span class="punkt-neu" title="Update verfügbar"></span></button>
+  <button role="menuitem" data-aktion="groesse"><span>Fenstergröße beim Start …</span><kbd id="menue-groesse"></kbd></button>
+  <hr>
+  <button role="menuitem" data-aktion="beenden"><span>Beenden</span><kbd>Strg+Q</kbd></button>
+</div>
+
+<dialog id="versionsdialog" class="fenster">
+  <h3>Version und Updates</h3>
+  <div class="v-status" id="v-status">
+    <span class="v-symbol" id="v-symbol">?</span>
+    <div><b id="v-titel">Noch nicht geprüft</b><div class="hinweis" id="v-text"></div></div>
+  </div>
+  <table class="v-tabelle">
+    <tr><td>Installiert</td><td id="v-installiert">–</td></tr>
+    <tr><td>Neueste auf GitHub</td><td id="v-neueste">–</td></tr>
+    <tr><td>Zuletzt geprüft</td><td id="v-geprueft">–</td></tr>
+  </table>
+  <div id="v-notizen-box" hidden>
+    <div class="v-zwischen">Neu in dieser Version</div>
+    <pre id="v-notizen"></pre>
+  </div>
+  <div class="zeile"><label class="klein"><input type="checkbox" id="v-beim-start"> Beim Start automatisch nach Updates suchen</label></div>
+  <div class="zeile rechtsbuendig">
+    <button id="v-seite" type="button">Versionen auf GitHub</button>
+    <button id="v-pruefen" type="button">Jetzt prüfen</button>
+    <button id="v-schliessen" type="button" class="haupt">Schließen</button>
+  </div>
+</dialog>
+
+<dialog id="groessendialog" class="fenster">
+  <h3>Fenstergröße beim Start</h3>
+  <p class="hinweis">Gemeint ist der Fensterinhalt ohne Rahmen und Titelleiste. Die Oberfläche ist auf 1920 × 1080 ausgelegt; bei kleineren Größen ordnen sich die Felder um, und die Seite scrollt.</p>
+  <div class="groessen" id="groessen"></div>
+  <p class="hinweis" id="g-info"></p>
+  <div class="zeile rechtsbuendig">
+    <button id="g-abbrechen" type="button">Abbrechen</button>
+    <button id="g-ok" type="button" class="haupt">Übernehmen</button>
+  </div>
+</dialog>
+
+<dialog id="portwahl" class="fenster">
   <h3>COM-Port wählen</h3>
   <p class="hinweis">Das SPM6103 meldet sich meist als „USB-SERIAL CH340“. Die OWON-Software muss dafür geschlossen sein.</p>
   <div id="portliste"></div>
@@ -1376,6 +1462,184 @@ if (window.spm) {
   // Schließen (auch per Esc) beantwortet die Anfrage des Programms - ohne Wahl heißt das Abbrechen
   $('portwahl').addEventListener('close', () => window.spm.portWaehlen($('portwahl').returnValue));
 }
+
+/* ---------- Menü ---------- */
+
+function menueZeigen(an) {
+  const m = $('menue'), k = $('menue-knopf');
+  if (an) {
+    const r = k.getBoundingClientRect();
+    m.style.left = r.left + 'px';
+    m.style.top = (r.bottom + 6) + 'px';
+  }
+  m.classList.toggle('offen', an);
+  k.setAttribute('aria-expanded', an);
+  if (an) m.querySelector('button').focus();
+}
+
+$('menue-knopf').addEventListener('click', e => { e.stopPropagation(); menueZeigen(!$('menue').classList.contains('offen')); });
+document.addEventListener('click', e => { if (!$('menue').contains(e.target)) menueZeigen(false); });
+$('menue').addEventListener('keydown', e => {
+  const knoepfe = [...$('menue').querySelectorAll('button')];
+  const i = knoepfe.indexOf(document.activeElement);
+  if (e.key === 'Escape') { menueZeigen(false); $('menue-knopf').focus(); }
+  else if (e.key === 'ArrowDown') { knoepfe[(i + 1) % knoepfe.length].focus(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { knoepfe[(i - 1 + knoepfe.length) % knoepfe.length].focus(); e.preventDefault(); }
+});
+$('menue').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  menueZeigen(false);
+  if (b.dataset.aktion === 'updates') versionsDialog(true);
+  else if (b.dataset.aktion === 'groesse') groessenDialog();
+  else if (b.dataset.aktion === 'beenden') window.spm?.beenden();
+}));
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'q') { window.spm?.beenden(); e.preventDefault(); }
+});
+
+/* ---------- Version und Updates ---------- */
+
+const version = { installiert: null, ergebnis: null, laeuft: false };
+const datumZeit = t => new Date(t).toLocaleDateString('de-DE') + ' ' + new Date(t).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+function versionAnzeigen() {
+  const e = version.ergebnis;
+  const status = version.laeuft ? 'pruefe' : e?.status ?? 'unbekannt';
+  const symbol = { pruefe: '…', aktuell: '✓', neu: '↑', unbekannt: '?' }[status];
+  const titel = {
+    pruefe: 'Prüfe auf Updates …',
+    aktuell: 'Auf dem neuesten Stand',
+    neu: `Update verfügbar: Version ${e?.neueste}`,
+    unbekannt: e ? 'Prüfung nicht möglich' : 'Noch nicht geprüft',
+  }[status];
+  const text = {
+    pruefe: 'Fragt bei GitHub nach der neuesten Version.',
+    aktuell: `Version ${version.installiert} ist die neueste.`,
+    neu: `Installiert ist ${version.installiert}. Die neue Version liegt auf GitHub zum Herunterladen bereit.`,
+    unbekannt: e?.grund ?? 'Mit „Jetzt prüfen“ fragt das Programm bei GitHub nach.',
+  }[status];
+
+  const k = $('version-knopf');
+  k.className = status;
+  k.querySelector('.v-symbol').textContent = symbol;
+  $('version-text').textContent = 'v' + (version.installiert ?? '–');
+  k.title = `${titel} – Klick: Version und Updates`;
+  $('menue').classList.toggle('update', status === 'neu');
+
+  $('v-status').className = 'v-status ' + status;
+  $('v-symbol').textContent = symbol;
+  $('v-titel').textContent = titel;
+  $('v-text').textContent = text;
+  $('v-installiert').textContent = version.installiert ?? '–';
+  $('v-neueste').textContent = e?.neueste ? e.neueste + (e.datum ? ` (vom ${new Date(e.datum).toLocaleDateString('de-DE')})` : '') : '–';
+  $('v-geprueft').textContent = e?.geprueft ? datumZeit(e.geprueft) : '–';
+  const notizen = status === 'neu' && e?.notizen ? e.notizen.replace(/\r/g, '').replace(/\*\*/g, '').trim() : '';
+  $('v-notizen-box').hidden = !notizen;
+  $('v-notizen').textContent = notizen;
+  $('v-seite').textContent = status === 'neu' ? 'Update herunterladen' : 'Versionen auf GitHub';
+  $('v-seite').classList.toggle('haupt', status === 'neu');
+  $('v-schliessen').classList.toggle('haupt', status !== 'neu');
+  $('v-pruefen').disabled = version.laeuft;
+}
+
+async function versionPruefen() {
+  if (version.laeuft || !window.spm) return;
+  version.laeuft = true;
+  versionAnzeigen();
+  try {
+    version.ergebnis = await window.spm.versionPruefen();
+  } catch (e) {
+    version.ergebnis = { status: 'unbekannt', grund: 'Die Prüfung ist fehlgeschlagen: ' + e.message, geprueft: Date.now() };
+  }
+  version.laeuft = false;
+  versionAnzeigen();
+  if (version.ergebnis.status === 'neu') log(`Update verfügbar: Version ${version.ergebnis.neueste} (installiert ${version.installiert})`, 'info');
+}
+
+// Öffnet den Dialog; ohne frisches Ergebnis (älter als 10 min) wird gleich geprüft
+function versionsDialog(pruefen) {
+  if (!$('versionsdialog').open) $('versionsdialog').showModal();
+  const alt = !version.ergebnis || Date.now() - version.ergebnis.geprueft > 10 * 60 * 1000;
+  if (pruefen && alt) versionPruefen(); else versionAnzeigen();
+}
+
+$('version-knopf').addEventListener('click', () => versionsDialog(true));
+$('v-pruefen').addEventListener('click', versionPruefen);
+$('v-schliessen').addEventListener('click', () => $('versionsdialog').close());
+$('v-seite').addEventListener('click', () => {
+  const e = version.ergebnis;
+  window.spm?.linkOeffnen(e?.status === 'neu' && e.seite ? e.seite : (e?.seite ?? ''));
+});
+$('v-beim-start').addEventListener('change', e => window.spm?.updatesBeimStart(e.target.checked));
+
+/* ---------- Fenstergröße beim Start ---------- */
+
+const GROESSEN = [[1280, 720], [1600, 900], [1920, 1080], [2560, 1440], [3840, 2160]];
+let groessenStand = null;
+
+async function groessenDialog() {
+  if (!window.spm) return;
+  const e = groessenStand = await window.spm.einstellungen();
+  const liste = $('groessen');
+  liste.innerHTML = '';
+  const eigeneWahl = !GROESSEN.some(([w, h]) => w === e.breite && h === e.hoehe);
+  for (const [w, h] of GROESSEN) {
+    const zuGross = w > e.bildschirm.breite || h > e.bildschirm.hoehe;
+    const zeile = document.createElement('label');
+    zeile.className = zuGross ? 'gesperrt' : '';
+    zeile.innerHTML = `<input type="radio" name="groesse"><span class="masse"></span><small></small>`;
+    const radio = zeile.querySelector('input');
+    radio.value = `${w}x${h}`;
+    radio.disabled = zuGross;
+    radio.checked = w === e.breite && h === e.hoehe;
+    zeile.querySelector('.masse').textContent = `${w} × ${h}`;
+    zeile.querySelector('small').textContent = [w === e.vorgabe.breite && h === e.vorgabe.hoehe ? 'Vorgabe' : '', zuGross ? 'größer als dieser Bildschirm' : ''].filter(Boolean).join(' · ');
+    liste.appendChild(zeile);
+  }
+  const eigene = document.createElement('label');
+  eigene.innerHTML = `<input type="radio" name="groesse" value="eigene"><span class="masse">Eigene:</span><input type="text" id="g-breite" inputmode="numeric"> × <input type="text" id="g-hoehe" inputmode="numeric">`;
+  liste.appendChild(eigene);
+  eigene.querySelector('input[type=radio]').checked = eigeneWahl;
+  $('g-breite').value = e.breite;
+  $('g-hoehe').value = e.hoehe;
+  for (const id of ['g-breite', 'g-hoehe']) {
+    $(id).addEventListener('focus', () => { eigene.querySelector('input[type=radio]').checked = true; });
+    $(id).addEventListener('keydown', ev => { if (ev.key === 'Enter') $('g-ok').click(); });
+  }
+  $('g-info').className = 'hinweis';
+  $('g-info').textContent = `Dieser Bildschirm bietet bis ${e.bildschirm.breite} × ${e.bildschirm.hoehe}. Das Fenster ist gerade ${e.jetzt.breite} × ${e.jetzt.hoehe} groß.`;
+  $('groessendialog').showModal();
+}
+
+function groesseAnzeigen(w, h) { $('menue-groesse').textContent = `${w} × ${h}`; }
+
+$('g-abbrechen').addEventListener('click', () => $('groessendialog').close());
+$('g-ok').addEventListener('click', async () => {
+  const wahl = document.querySelector('#groessen input[name=groesse]:checked');
+  if (!wahl) return;
+  const [w, h] = wahl.value === 'eigene'
+    ? [Number($('g-breite').value.trim()), Number($('g-hoehe').value.trim())]
+    : wahl.value.split('x').map(Number);
+  const r = await window.spm.fenstergroesse(w, h);
+  if (!r.ok) {
+    $('g-info').className = 'hinweis fehler';
+    $('g-info').textContent = r.grund;
+    return;
+  }
+  $('groessendialog').close();
+  groesseAnzeigen(w, h);
+  log(`Fenstergröße beim Start: ${w} × ${h}` + (r.verkleinert ? ` – auf diesem Bildschirm vorerst ${r.angewendet.breite} × ${r.angewendet.hoehe}` : ''), 'info');
+});
+
+// Beim Start: Version anzeigen und, wenn eingestellt, gleich nachsehen
+(async () => {
+  if (!window.spm) { $('version-knopf').hidden = true; $('menue-knopf').hidden = true; return; }
+  version.installiert = await window.spm.version();
+  const e = await window.spm.einstellungen();
+  $('v-beim-start').checked = e.updatesBeimStart;
+  groesseAnzeigen(e.breite, e.hoehe);
+  versionAnzeigen();
+  if (e.updatesBeimStart) setTimeout(versionPruefen, 1500);
+})();
 
 /* ---------- Einstellungen merken ---------- */
 

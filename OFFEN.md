@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.0.0 liegt auf `main` und als Release
-[v1.0.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.0) (`OWON-SPM6103.exe`, nicht signiert).
+Stand 06.10.2026: Version 1.0.1 liegt auf `main` und als Release
+[v1.0.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.1) (`OWON-SPM6103.exe`, nicht signiert).
 Bisher nur im Demo-Modus und mit dem Selbsttest geprüft (`npx electron . --pruefen=bild.png` in `programm/`).
 
 ## Liegt bei Marco

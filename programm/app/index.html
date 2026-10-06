@@ -85,9 +85,11 @@ main { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; }
 .funktionen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
 .funktionen button { padding: 7px 4px; }
 .konsole { display: flex; flex-direction: column; }
-#konsole-log { flex: 1; min-height: 120px; overflow: auto; font-family: var(--mono); font-size: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; white-space: pre-wrap; word-break: break-all; }
+/* Genau 6 Einträge hoch, danach wird gescrollt - sonst drückt jede neue Zeile den Verlauf zusammen */
+#konsole-log { --zeile: 18px; flex: none; height: calc(6 * var(--zeile) + 2px); overflow-y: auto; overflow-x: hidden; font-family: var(--mono); font-size: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; }
+#konsole-log > div { height: var(--zeile); line-height: var(--zeile); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #konsole-log .aus { color: var(--i); } #konsole-log .ein { color: var(--d); } #konsole-log .err { color: var(--err); } #konsole-log .info { color: var(--muted); }
-.konsole-eingabe { display: flex; gap: 8px; margin-top: 8px; }
+.konsole-eingabe { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }   /* Eingabe unten am Feld */
 .konsole-eingabe input { font-family: var(--mono); }
 #diagramme { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); }
 .diagramm { display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 6px; }
@@ -142,7 +144,6 @@ table.kennwerte tr:last-child td { border-bottom: 0; }
   .seite.aktiv { height: auto; }
   #seite-live { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: none; }
   .konsole { grid-column: 1 / -1; }
-  #konsole-log { height: 180px; flex: none; }
   #diagramme { display: block; }
   .diagramm canvas { flex: none; height: 120px; }
   #seite-aufz { height: calc(100vh - 90px); min-height: 520px; }
@@ -557,16 +558,23 @@ const zustand = {
 
 /* ---------- Konsole ---------- */
 
+// Die Konsole läuft mit, bis man hochscrollt; ganz nach unten scrollen schaltet das Mitlaufen wieder ein
+let konsoleFolgt = true;
+$('konsole-log').addEventListener('scroll', () => {
+  const el = $('konsole-log');
+  konsoleFolgt = el.scrollTop + el.clientHeight >= el.scrollHeight - 18;
+});
+
 function log(text, art = 'info') {
   const el = $('konsole-log');
-  const unten = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const zeile = document.createElement('div');
   zeile.className = art;
+  zeile.title = text;   // ganze Zeile beim Überfahren, falls abgeschnitten
   const vor = { aus: '» ', ein: '« ', err: '! ', info: '· ' }[art];
   zeile.textContent = `${new Date().toLocaleTimeString('de-DE')} ${vor}${text}`;
   el.appendChild(zeile);
   while (el.childElementCount > 500) el.firstChild.remove();
-  if (unten) el.scrollTop = el.scrollHeight;
+  if (konsoleFolgt) el.scrollTop = el.scrollHeight;
 }
 
 async function frage(befehl, wartezeit) {

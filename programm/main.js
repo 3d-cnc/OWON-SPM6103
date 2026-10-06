@@ -142,7 +142,13 @@ function fensterOeffnen() {
     fenster.webContents.on('will-navigate', (ereignis) => ereignis.preventDefault());
 
     fenster.once('ready-to-show', () => {
-        if (pruefen) return;
+        if (pruefen) {
+            // Selbsttest: ganz durchsichtig, aber wirklich gezeigt - ein verstecktes Fenster zeichnet nicht alles neu
+            fenster.setOpacity(0);
+            fenster.setSkipTaskbar(true);
+            fenster.showInactive();
+            return;
+        }
         if (lage.maximiert) fenster.maximize();
         fenster.show();
     });
@@ -219,6 +225,8 @@ function pruefenLaufen() {
     const bildDatei = pruefen.includes('=') ? pruefen.split('=')[1] : path.join(os.tmpdir(), 'owon-spm6103-pruefen.png');
     const js = (code) => fenster.webContents.executeJavaScript(code);
     const warten = (ms) => new Promise((weiter) => setTimeout(weiter, ms));
+    // Ein unsichtbares Fenster zeichnet selten neu - vor jedem Bild einmal anstossen
+    const frischesBild = async () => { fenster.webContents.invalidate(); await warten(400); return fenster.webContents.capturePage(); };
 
     fenster.webContents.on('console-message', (ereignis) => {
         if (ereignis.level === 'error') fehler.push(ereignis.message);
@@ -255,7 +263,15 @@ function pruefenLaufen() {
             const flaeche = await js(`(() => { const m = document.querySelector('main');
                 return { fenster: innerWidth + ' x ' + innerHeight, scrollt: m.scrollHeight > m.clientHeight + 1 || m.scrollWidth > m.clientWidth + 1,
                          kurve: document.querySelector('#diagramme canvas').clientHeight }; })()`);
-            fs.writeFileSync(bildDatei, (await fenster.webContents.capturePage()).toPNG());
+            // Viele Konsolen-Einträge dürfen den Verlauf nicht zusammendrücken: 6 sichtbar, der Rest scrollt
+            const konsole = await js(`(() => {
+                for (let n = 1; n <= 40; n++) log('Testeintrag ' + n + ' ' + 'mit langem Text '.repeat(n % 3 ? 1 : 12), n % 2 ? 'aus' : 'ein');
+                const el = document.getElementById('konsole-log'), zeile = el.lastElementChild.getBoundingClientRect().height;
+                const innen = el.clientHeight - parseFloat(getComputedStyle(el).paddingTop) - parseFloat(getComputedStyle(el).paddingBottom);
+                return { eintraege: el.childElementCount, sichtbar: Math.round(innen / zeile * 10) / 10, scrollbar: el.scrollHeight > el.clientHeight, amEnde: el.scrollTop + el.clientHeight >= el.scrollHeight - 2,
+                         kurveNachher: document.querySelector('#diagramme canvas').clientHeight }; })()`);
+            flaeche.konsole = konsole;
+            fs.writeFileSync(bildDatei, (await frischesBild()).toPNG());
 
             // Tab 2: Aufzeichnung
             await js("document.querySelector('.tab[data-seite=\"seite-aufz\"]').click()");
@@ -264,10 +280,11 @@ function pruefenLaufen() {
                 kennwerte: document.querySelectorAll('#kennwerte tr').length, energie: document.getElementById('energie').textContent,
                 zaehler: document.getElementById('tab-zaehler').textContent,
                 scrollt: document.querySelector('main').scrollHeight > document.querySelector('main').clientHeight + 1 })`);
-            fs.writeFileSync(bildDatei.replace(/\.png$/i, '') + '-aufzeichnung.png', (await fenster.webContents.capturePage()).toPNG());
+            fs.writeFileSync(bildDatei.replace(/\.png$/i, '') + '-aufzeichnung.png', (await frischesBild()).toPNG());
 
             const ok = schnittstelle.serial && schnittstelle.bruecke === 'object' && portwahl.offen && /Verbinden$/.test(portwahl.ergebnis)
                 && werte.modus === 'CC' && werte.punkte > 5 && flaeche.fenster === `${BREITE} x ${HOEHE}` && !flaeche.scrollt
+                && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && Math.abs(konsole.sichtbar - 6) < 0.6
                 && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt && fehler.length === 0;
             console.log(JSON.stringify({ ok, schnittstelle, portwahl, werte, flaeche, aufz, fehler, bild: bildDatei }, null, 1));
             app.exit(ok ? 0 : 1);

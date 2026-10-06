@@ -10,15 +10,26 @@
   --u: #f5c542; --i: #4fc3f7; --p: #ef7d6c; --d: #7ddc8a;
   --ok: #3ecf72; --warn: #ffa94d; --err: #ff5c5c; --knopf: #252c36; --knopf-hover: #2f3844;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+  --rollbalken: #3a4350; --rollbalken-hover: #4d5866;
+  color-scheme: dark;   /* Scrollleisten, Auswahllisten und Eingabefelder des Systems dunkel */
 }
 @media (prefers-color-scheme: light) {
   :root {
+    color-scheme: light;
+    --rollbalken: #c3cbd5; --rollbalken-hover: #a9b3bf;
     --bg: #eef1f5; --panel: #ffffff; --panel2: #f6f8fa; --line: #d6dce4; --text: #1b2027; --muted: #5f6b7a;
     --u: #a87700; --i: #0277bd; --p: #c63d2f; --d: #2e7d32;
     --ok: #1f9d55; --warn: #c76a00; --err: #d32f2f; --knopf: #e8ecf1; --knopf-hover: #dde3ea;
   }
 }
 * { box-sizing: border-box; }
+/* Schmale Scrollleisten in den Farben der Oberfläche */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rollbalken); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--rollbalken-hover); }
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-corner { background: transparent; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
 header { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 9px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
@@ -85,8 +96,9 @@ main { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; }
 .funktionen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
 .funktionen button { padding: 7px 4px; }
 .konsole { display: flex; flex-direction: column; }
-/* Genau 6 Einträge hoch, danach wird gescrollt - sonst drückt jede neue Zeile den Verlauf zusammen */
-#konsole-log { --zeile: 18px; flex: none; height: calc(6 * var(--zeile) + 2px); overflow-y: auto; overflow-x: hidden; font-family: var(--mono); font-size: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; }
+/* Füllt das Feld bis zur Eingabe, mindestens 6 Einträge. height: 0 + flex-grow: die Einträge selbst
+   zählen nicht zur Höhe der oberen Reihe - sonst drückt jede neue Zeile den Verlauf zusammen */
+#konsole-log { --zeile: 18px; flex: 1 1 0; height: 0; min-height: calc(6 * var(--zeile) + 2px); overflow-y: auto; overflow-x: hidden; font-family: var(--mono); font-size: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; }
 #konsole-log > div { height: var(--zeile); line-height: var(--zeile); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #konsole-log .aus { color: var(--i); } #konsole-log .ein { color: var(--d); } #konsole-log .err { color: var(--err); } #konsole-log .info { color: var(--muted); }
 .konsole-eingabe { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }   /* Eingabe unten am Feld */

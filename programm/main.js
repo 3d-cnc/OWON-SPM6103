@@ -263,12 +263,13 @@ function pruefenLaufen() {
             const flaeche = await js(`(() => { const m = document.querySelector('main');
                 return { fenster: innerWidth + ' x ' + innerHeight, scrollt: m.scrollHeight > m.clientHeight + 1 || m.scrollWidth > m.clientWidth + 1,
                          kurve: document.querySelector('#diagramme canvas').clientHeight }; })()`);
-            // Viele Konsolen-Einträge dürfen den Verlauf nicht zusammendrücken: 6 sichtbar, der Rest scrollt
+            // Viele Konsolen-Einträge dürfen den Verlauf nicht zusammendrücken: die Konsole füllt ihr Feld bis zur Eingabe, der Rest scrollt
             const konsole = await js(`(() => {
                 for (let n = 1; n <= 40; n++) log('Testeintrag ' + n + ' ' + 'mit langem Text '.repeat(n % 3 ? 1 : 12), n % 2 ? 'aus' : 'ein');
                 const el = document.getElementById('konsole-log'), zeile = el.lastElementChild.getBoundingClientRect().height;
                 const innen = el.clientHeight - parseFloat(getComputedStyle(el).paddingTop) - parseFloat(getComputedStyle(el).paddingBottom);
-                return { eintraege: el.childElementCount, sichtbar: Math.round(innen / zeile * 10) / 10, scrollbar: el.scrollHeight > el.clientHeight, amEnde: el.scrollTop + el.clientHeight >= el.scrollHeight - 2,
+                const luecke = document.querySelector('.konsole-eingabe').getBoundingClientRect().top - el.getBoundingClientRect().bottom;
+                return { eintraege: el.childElementCount, luecke: Math.round(luecke), sichtbar: Math.round(innen / zeile * 10) / 10, scrollbar: el.scrollHeight > el.clientHeight, amEnde: el.scrollTop + el.clientHeight >= el.scrollHeight - 2,
                          kurveNachher: document.querySelector('#diagramme canvas').clientHeight }; })()`);
             flaeche.konsole = konsole;
             fs.writeFileSync(bildDatei, (await frischesBild()).toPNG());
@@ -284,7 +285,7 @@ function pruefenLaufen() {
 
             const ok = schnittstelle.serial && schnittstelle.bruecke === 'object' && portwahl.offen && /Verbinden$/.test(portwahl.ergebnis)
                 && werte.modus === 'CC' && werte.punkte > 5 && flaeche.fenster === `${BREITE} x ${HOEHE}` && !flaeche.scrollt
-                && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && Math.abs(konsole.sichtbar - 6) < 0.6
+                && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && konsole.sichtbar >= 6 && konsole.luecke <= 12
                 && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt && fehler.length === 0;
             console.log(JSON.stringify({ ok, schnittstelle, portwahl, werte, flaeche, aufz, fehler, bild: bildDatei }, null, 1));
             app.exit(ok ? 0 : 1);

@@ -1,13 +1,17 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.0.1 liegt auf `main` und als Release
-[v1.0.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.1) (`OWON-SPM6103.exe`, nicht signiert).
-Bisher nur im Demo-Modus und mit dem Selbsttest geprüft (`npx electron . --pruefen=bild.png` in `programm/`).
+Stand 06.10.2026: Version 1.0.2 liegt auf  und als Release
+[v1.0.2](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.2) (, nicht signiert).
+Selbsttest: Downloading Electron binary... in .
+
+**Am echten Gerät bestätigt** (Marcos Bild vom 06.10., Version 1.0.1): Verbinden klappt, und die
+Antworten haben genau das Format aus OWONs Anleitung –  liefert sieben Werte
+(),  z. B. .
 
 ## Liegt bei Marco
 
-- **Mit dem echten Netzteil ausprobieren:** Verbinden (welcher COM-Port, welche Baudrate findet es),
-  Werte im Tab „Live“, Ausgang und Sollwerte setzen, alle Multimeter-Funktionen, CSV speichern.
+- **Am echten Netzteil noch ausprobieren:** Ausgang ein/aus, Sollwerte und OVP/OCP setzen, CV/CC unter
+  Last, die übrigen Multimeter-Funktionen, Messbereich, Hold und Relativ, CSV speichern.
   Passt etwas nicht: in der SCPI-Konsole „Abfragen mitschreiben“ anhaken und die Ausgabe an Claude geben.
 
 ## Offene Vorschläge

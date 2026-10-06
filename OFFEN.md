@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.3.0 liegt auf `main` und als Release
-[v1.3.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.3.0) (`OWON-SPM6103.exe`, nicht signiert).
+Stand 06.10.2026: Version 1.4.0 liegt auf `main` und als Release
+[v1.4.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.4.0) (`OWON-SPM6103.exe`, nicht signiert).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
@@ -19,8 +19,10 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 - **Am echten Netzteil noch ausprobieren:** Ausgang ein/aus, Sollwerte und OVP/OCP setzen, CV/CC unter
   Last, die übrigen Multimeter-Funktionen, Messbereich, Hold und Relativ, CSV speichern.
   Passt etwas nicht: in der SCPI-Konsole „Abfragen mitschreiben“ anhaken und die Ausgabe an Claude geben.
-  Davon hängen Vorlagen, Abschalten, Alarme mit Abschalten, Ablaufprogramm, Akku laden und Kennlinie ab:
-  sie alle setzen `VOLT`, `CURR`, `VOLT:LIM`, `CURR:LIM` und `OUTP`.
+  Davon hängen Vorlagen, Feinverstellung, Abschalten, Alarme mit Abschalten, Ablaufprogramm, Akku laden,
+  Kennlinie, Erst-Einschalten und Zyklentest ab: sie alle setzen `VOLT`, `CURR`, `VOLT:LIM`, `CURR:LIM` und `OUTP`.
+- **Fernanzeige mit dem echten Handy:** einschalten, Windows-Firewall „Zugriff zulassen“ (private Netzwerke),
+  QR-Code scannen. Geprüft ist sie bisher nur auf demselben PC (127.0.0.1).
 - **Bauteilprüfung am echten Multimeter:** Wie meldet das SPM6103 „nichts angeschlossen“ in `CONF:ALL?`
   (Anzeige OL)? Das Programm erwartet einen Wert, der keine Zahl ist. Kommt stattdessen eine sehr große
   Zahl, zählt die Prüfung nicht von selbst weiter – dann die Konsolen-Ausgabe an Claude geben.
@@ -33,6 +35,10 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
   Alles nur im Demo-Modus geprüft.
 - 06.10., Version 1.3.0: **Hell/Dunkel** zum Umschalten (Knopf oben rechts, Menü, Strg+Umschalt+L), Vorgabe
   dunkel, unabhängig von Windows; gespeichert. Damit ist der Teil „Hell/Dunkel“ aus SPM-6 erledigt.
+- 06.10., Version 1.4.0: **SPM-22 bis SPM-27** – Feinverstellung per Mausrad, neuer Tab „Prüfstand“ mit
+  Erst-Einschalten und Zyklentest, Verlauf zoomen/verschieben/Ausschnitt und Kurven als Bild, Messbericht
+  als PDF, Fernanzeige im WLAN (Webserver in `main.js`, Seite `programm/fern/index.html`, npm-Paket
+  `qrcode`). Nur im Demo-Modus bzw. auf demselben PC geprüft.
 
 ## Offene Vorschläge
 
@@ -62,19 +68,12 @@ nie neu vergeben. Vergeben sind SPM-1 bis SPM-29, **die nächste ist SPM-30**.
 |---|---|
 | SPM-20 | **Von selbst wieder verbinden:** den zuletzt benutzten COM-Port merken, auf Wunsch beim Start gleich verbinden, und nach einem USB-Abriss oder Aus- und Einschalten des Netzteils selbst neu verbinden – die Aufzeichnung läuft in derselben Sitzung weiter, die Lücke wird markiert. |
 | SPM-21 | **Schleppzeiger und Glättung im Tab Live:** unter jedem großen Wert Min und Max seit dem letzten Zurücksetzen (z. B. höchster Strom beim Einschalten eines Motors), dazu wahlweise ein gleitender Mittelwert über 4, 10 oder 50 Messungen gegen unruhige Anzeigen. |
-| SPM-22 | **Sollwerte feinfühlig verstellen wie am Drehknopf:** Mausrad oder Pfeiltasten über Spannung bzw. Strom ändern den Sollwert in wählbaren Schritten (1 mV … 1 V, mit Umschalt grob). Mit Bestätigung oder sofort, einstellbar; nützlich beim Herantasten an eine Schwelle. |
-| SPM-23 | **Erst-Einschalten-Assistent für neue Platinen:** kleine Strombegrenzung, Spannung langsam bis zum Ziel hochfahren, dabei auf Auffälligkeiten achten (Strom steigt früh an, Strombegrenzung greift, Ruhestrom über Grenze) und sofort abschalten. Am Ende ein kurzes Protokoll „Ruhestrom 23 mA bei 5,00 V – in Ordnung“. |
-| SPM-24 | **Zyklentest mit Fehlererkennung:** Ausgang n-mal an und aus (z. B. für Relais, Lüfter, Netzteile im Test), in jeder An-Phase prüfen, ob der Strom im erwarteten Fenster liegt; bei einem Fehler anhalten und die Zyklusnummer festhalten. Zähler und Protokoll wie bei der Bauteilprüfung. |
-| SPM-25 | **Verlauf zoomen und verschieben:** Mausrad zoomt die Zeitachse, Ziehen verschiebt, ein markierter Bereich zeigt Min/Max/Mittel, Dauer und Energie nur für diesen Ausschnitt. Kurven als Bild speichern oder in die Zwischenablage kopieren. |
-| SPM-26 | **Messbericht als PDF:** Kurven, Kennwerte, Markierungen, Energie, Geräte- und Programmversion, dazu ein freies Notizfeld („Platine Rev. B, Lüfter 120 mm“). Für Dokumentation oder Kunden; über die PDF-Funktion von Electron, keine Zusatzsoftware. |
-| SPM-27 | **Fernanzeige im Netzwerk:** das Programm stellt eine kleine Seite im eigenen WLAN bereit, das Handy oder Tablet zeigt Spannung, Strom, Multimeter und Kurven live – nur lesen, wahlweise mit „Ausgang aus“-Knopf. Nur im lokalen Netz, abschaltbar, mit Zugangscode. |
 | SPM-28 | **Benachrichtigung aufs Handy:** bei Alarm, Abschaltung oder „Akku voll“ eine Nachricht aufs Handy, etwa über ntfy (kostenlose App, kein Konto nötig) oder per E-Mail. Nur wenn eingeschaltet; übertragen wird nur der Meldungstext. |
 | SPM-29 | **Rechenkanal mit eigener Formel:** eine zusätzliche Kurve und CSV-Spalte aus U, I, P und dem Multimeter-Wert, z. B. Widerstand = U/I, Wirkungsgrad mit bekannter Last, oder **Temperatur aus einem NTC** am Multimeter (Ω → °C nach Datenblatt-B-Wert). Mit Einheit und eigenem Namen; Alarme und Abschalten können ihn ebenfalls nutzen. |
 
-SPM-20 bis SPM-29 sind voneinander unabhängig. SPM-23 und SPM-24 bauen auf dem Ablaufprogramm auf und setzen
-wie dieses voraus, dass die Setzbefehle am echten Gerät geprüft sind.
+Offen aus dieser Reihe: SPM-20, SPM-21, SPM-28, SPM-29 (SPM-22 bis SPM-27 umgesetzt in 1.4.0).
 
 SPM-1 und SPM-2 sind Alternativen; Marco entscheidet. Verworfen, weil nicht kostenlos oder ohne
 Nutzen: ein selbst signiertes Zertifikat (SmartScreen warnt trotzdem), Azure Artifact Signing
 (9,99 $ im Monat, in der EU nur für Firmen), gekaufte Zertifikate (meist über 100 € im Jahr).
-Wortlaut der umgesetzten Vorschläge SPM-10 bis SPM-19: `git log -p OFFEN.md`.
+Wortlaut der umgesetzten Vorschläge SPM-10 bis SPM-19 und SPM-22 bis SPM-27: `git log -p OFFEN.md`.

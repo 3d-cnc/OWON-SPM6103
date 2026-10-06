@@ -182,12 +182,18 @@ function chipSetzen(name, titel, text, stoppen) {
   }
   c.titel = titel; if (stoppen) c.stoppen = stoppen;
   c.el.querySelector('span').textContent = text ? `${titel} · ${text}` : titel;
-  $('tab-auto').textContent = automatikChips.size ? '●' : '';
+  chipTooltip();
 }
 function chipEntfernen(name) {
   automatikChips.get(name)?.el.remove();
   automatikChips.delete(name);
+  chipTooltip();
+}
+
+// Alle laufenden Automatiken im Tooltip – falls nicht alle Anzeigen in die Zeile passen
+function chipTooltip() {
   $('tab-auto').textContent = automatikChips.size ? '●' : '';
+  $('automatik-chips').title = [...automatikChips.values()].map(c => c.el.querySelector('span').textContent).join('\n');
 }
 
 function statusPille(id, text, art = '') {

@@ -232,6 +232,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
     <button class="tab aktiv" role="tab" data-seite="seite-live">Live</button>
     <button class="tab" role="tab" data-seite="seite-aufz">Aufzeichnung<span class="zaehler" id="tab-zaehler"></span></button>
     <button class="tab" role="tab" data-seite="seite-auto">Automatik<span class="zaehler" id="tab-auto"></span></button>
+    <button class="tab" role="tab" data-seite="seite-pruefstand">Prüfstand</button>
     <button class="tab" role="tab" data-seite="seite-kennlinie">Kennlinie</button>
     <button class="tab" role="tab" data-seite="seite-bauteile">Bauteile</button>
     <button class="tab" role="tab" data-seite="seite-vergleich">Vergleich</button>
@@ -331,12 +332,15 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
               <option value="900">15 min</option><option value="3600">1 h</option><option value="0">alles</option>
             </select>
           </label>
+          <span class="klein auswahl-info" id="auswahl-info"></span>
+          <button id="bild-speichern" title="Die vier Kurven als PNG-Bild speichern">Bild</button>
+          <button id="bild-kopieren" title="Die vier Kurven als Bild in die Zwischenablage kopieren">Kopieren</button>
           <button id="markierung-knopf" title="Markierung mit Notiz setzen (Taste M)">Markierung (M)</button>
           <button id="anhalten">Anhalten</button>
         </span>
       </h2>
       <div id="diagramme"></div>
-      <p class="hinweis">Maus über die Kurven: Werte zu diesem Zeitpunkt. Min, Max und Mittel gelten für das sichtbare Zeitfenster; die Multimeter-Kurve zeigt nur die aktuelle Messfunktion.</p>
+      <p class="hinweis">Mausrad: zoomen · Ziehen: verschieben · Umschalt+Ziehen: Ausschnitt markieren (Min/Max/Mittel gelten dann dafür) · Doppelklick: zurück zum Mitlaufen. Die Multimeter-Kurve zeigt nur die aktuelle Messfunktion.</p>
     </section>
   </div>
 
@@ -354,6 +358,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         <div class="zeile">
           <button id="csv" class="haupt" disabled>Als CSV speichern</button>
           <button id="leeren" disabled>Leeren</button>
+          <button id="bericht" disabled title="Messbericht mit Kurven, Kennwerten und Markierungen">Bericht (PDF) …</button>
         </div>
         <p class="hinweis">Aufgezeichnet wird jede Messung ab dem Verbinden, auch wenn das Fenster minimiert ist. Die CSV-Datei nutzt Semikolon und Dezimalkomma und öffnet sich so direkt in Excel.</p>
       </section>
@@ -476,7 +481,56 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
     </section>
   </div>
 
-  <!-- ======================= Tab 4: Kennlinie (SPM-15) ======================= -->
+  <!-- ======================= Tab: Prüfstand (SPM-23, SPM-24) ======================= -->
+  <div class="seite zweispaltig-gleich" id="seite-pruefstand">
+    <section class="panel auto-panel" id="p-erstein">
+      <h2>Erst-Einschalten <span class="rechts"><span class="status-pille" id="ee-status">bereit</span></span></h2>
+      <p class="hinweis">Für frisch gelötete Platinen: Spannung mit kleiner Strombegrenzung langsam hochfahren. Greift die Begrenzung oder steigt der Strom über die Grenze, schaltet der Ausgang sofort ab.</p>
+      <div class="formular vier">
+        <label class="ganz2">Platine <input type="text" id="ee-name" placeholder="z. B. Steuerung Rev. B"></label>
+        <label>Zielspannung [V] <input type="text" id="ee-ziel" inputmode="decimal"></label>
+        <label>Strombegrenzung [A] <input type="text" id="ee-strom" inputmode="decimal"></label>
+        <label>Hochfahren in [s] <input type="text" id="ee-rampe" inputmode="decimal"></label>
+        <label>Ruhestrom höchstens [A] <input type="text" id="ee-grenze" inputmode="decimal"></label>
+        <label>Ruhestrom messen [s] <input type="text" id="ee-halten" inputmode="decimal"></label>
+        <label class="haken"><input type="checkbox" id="ee-anlassen"> Ausgang anlassen, wenn in Ordnung</label>
+      </div>
+      <div class="zeile"><button id="ee-start" class="haupt">Einschalten</button><button id="ee-stopp">Abbrechen</button><div class="fortschritt breit"><i id="ee-balken"></i></div></div>
+      <div class="ee-ergebnis" id="ee-ergebnis">Noch kein Durchgang.</div>
+      <canvas id="ee-canvas" class="klein-diagramm"></canvas>
+      <div class="raster-ee listen-kopf"><div>Zeit</div><div>Platine</div><div>Ergebnis</div><div>Ruhestrom</div><div>Höchster Strom</div></div>
+      <div id="ee-protokoll" class="liste kurz"></div>
+      <div class="zeile"><button id="ee-csv">Protokoll als CSV</button></div>
+    </section>
+
+    <section class="panel auto-panel" id="p-zyklen">
+      <h2>Zyklentest <span class="rechts"><span class="status-pille" id="zt-status">bereit</span></span></h2>
+      <p class="hinweis">Schaltet den Ausgang immer wieder ein und aus und prüft in jeder An-Phase, ob der Strom im erwarteten Bereich liegt – für Relais, Lüfter, Motoren, Netzteile im Dauertest.</p>
+      <div class="formular vier">
+        <label>Spannung [V] <input type="text" id="zt-volt" inputmode="decimal"></label>
+        <label>Strombegrenzung [A] <input type="text" id="zt-curr" inputmode="decimal"></label>
+        <label>An [s] <input type="text" id="zt-an" inputmode="decimal"></label>
+        <label>Aus [s] <input type="text" id="zt-aus" inputmode="decimal"></label>
+        <label>Zyklen (0 = endlos) <input type="text" id="zt-zyklen" inputmode="numeric"></label>
+        <label>Prüfen ab [s] nach Ein <input type="text" id="zt-einschwing" inputmode="decimal"></label>
+        <label>Strom mindestens [A] <input type="text" id="zt-min" inputmode="decimal"></label>
+        <label>Strom höchstens [A] <input type="text" id="zt-max" inputmode="decimal"></label>
+        <label class="ganz">Bei einem Fehler <select id="zt-fehler"><option value="halt">anhalten und Ausgang aus</option><option value="weiter">zählen und weitermachen</option></select></label>
+      </div>
+      <div class="zeile"><button id="zt-start" class="haupt">Starten</button><button id="zt-stopp">Stoppen</button><div class="fortschritt breit"><i id="zt-balken"></i></div></div>
+      <div class="kacheln vier">
+        <div class="kachel"><div class="name">Zyklus</div><div class="zahl" id="zt-nr">–</div></div>
+        <div class="kachel gut"><div class="name">In Ordnung</div><div class="zahl" id="zt-ok">0</div></div>
+        <div class="kachel schlecht"><div class="name">Fehler</div><div class="zahl" id="zt-fehl">0</div></div>
+        <div class="kachel"><div class="name">Phase</div><div class="zahl klein" id="zt-phase">–</div></div>
+      </div>
+      <div class="raster-zt listen-kopf"><div>Zyklus</div><div>Zeit</div><div>Strom min</div><div>Strom max</div><div>Ergebnis</div></div>
+      <div id="zt-protokoll" class="liste"></div>
+      <div class="zeile"><button id="zt-csv">Protokoll als CSV</button></div>
+    </section>
+  </div>
+
+  <!-- ======================= Tab: Kennlinie (SPM-15) ======================= -->
   <div class="seite zweispaltig" id="seite-kennlinie">
     <div class="spalte-links">
       <section class="panel">
@@ -585,6 +639,8 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
 <div class="menue" id="menue" role="menu" aria-labelledby="menue-knopf">
   <button role="menuitem" data-aktion="updates"><span>Nach Updates suchen …</span><span class="punkt-neu" title="Update verfügbar"></span></button>
   <button role="menuitem" data-aktion="groesse"><span>Fenstergröße beim Start …</span><kbd id="menue-groesse"></kbd></button>
+  <button role="menuitem" data-aktion="bericht"><span>Messbericht als PDF …</span></button>
+  <button role="menuitem" data-aktion="fern"><span>Fernanzeige im WLAN …</span><span class="punkt-an" id="menue-fern" title="Fernanzeige läuft"></span></button>
   <button role="menuitem" data-aktion="thema"><span id="menue-thema">Helles Design</span><kbd>Strg+Umschalt+L</kbd></button>
   <hr>
   <button role="menuitem" data-aktion="beenden"><span>Beenden</span><kbd>Strg+Q</kbd></button>
@@ -622,6 +678,38 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
     <button id="g-abbrechen" type="button">Abbrechen</button>
     <button id="g-ok" type="button" class="haupt">Übernehmen</button>
   </div>
+</dialog>
+
+<dialog id="bericht-dialog" class="fenster">
+  <h3>Messbericht als PDF</h3>
+  <p class="hinweis">Enthält die ganze Aufzeichnung: Übersicht, Energie, Kennwerte, die vier Kurven und die Markierungen. Gedruckt wird immer in hellen Farben.</p>
+  <div class="formular">
+    <label class="ganz">Titel <input type="text" id="br-titel" placeholder="z. B. Lüftertest Gehäuse 2"></label>
+    <label class="ganz">Notiz <textarea id="br-notiz" rows="4" placeholder="z. B. Platine Rev. B, Lüfter 120 mm, Raumtemperatur 21 °C"></textarea></label>
+  </div>
+  <div class="zeile"><label class="klein"><input type="checkbox" id="br-markierungen" checked> Liste der Markierungen</label><label class="klein"><input type="checkbox" id="br-sollwerte" checked> Sollwerte und Schutzgrenzen</label></div>
+  <p class="hinweis" id="br-info"></p>
+  <div class="zeile rechtsbuendig"><button id="br-abbrechen" type="button">Abbrechen</button><button id="br-ok" type="button" class="haupt">PDF erstellen …</button></div>
+</dialog>
+
+<dialog id="fern-dialog" class="fenster breit">
+  <h3>Fernanzeige im WLAN</h3>
+  <p class="hinweis">Handy oder Tablet im selben WLAN zeigen Spannung, Strom, Multimeter und Kurven live. Nur im eigenen Netz, nur mit Zugangscode. Beim ersten Einschalten fragt die Windows-Firewall nach – „Zugriff zulassen“ für private Netzwerke wählen.</p>
+  <div class="fern-raster">
+    <div>
+      <div class="zeile"><label class="klein"><input type="checkbox" id="fe-an"> Fernanzeige einschalten</label></div>
+      <div class="formular">
+        <label>Port <input type="text" id="fe-port" inputmode="numeric"></label>
+        <label>Zugangscode <input type="text" id="fe-code" readonly></label>
+      </div>
+      <div class="zeile"><button id="fe-neuer-code" type="button">Neuer Code</button></div>
+      <div class="zeile"><label class="klein"><input type="checkbox" id="fe-notaus"> Knopf „Ausgang aus“ auf dem Handy erlauben</label></div>
+      <p class="hinweis" id="fe-status">Aus.</p>
+      <div id="fe-adressen" class="fern-adressen"></div>
+    </div>
+    <div class="fern-qr"><img id="fe-qr" alt="QR-Code zum Öffnen auf dem Handy" hidden><span class="hinweis" id="fe-qr-text">QR-Code erscheint, sobald die Fernanzeige läuft.</span></div>
+  </div>
+  <div class="zeile rechtsbuendig"><button id="fe-schliessen" type="button" class="haupt">Schließen</button></div>
 </dialog>
 
 <dialog id="portwahl" class="fenster">
@@ -907,6 +995,7 @@ const zustand = {
   daten: [], letzter: null, funktion: null, dmmAuto: null, dmmBereich: null,
   hold: false, rel: false, ausgang: null, angehalten: null, hoverT: null, fehlerFolge: 0, gespeichert: 0,
   ereignisse: [], offeneNotizen: [],   // Markierungen (von Hand und von den Automatiken)
+  ansicht: null, auswahl: null,        // Verlauf: gezoomter Zeitbereich, markierter Ausschnitt (js/verlauf.js)
 };
 
 // Andockstellen für die Zusatzfunktionen in js/: jede Messung, jedes Trennen, jeder Tabwechsel
@@ -1256,7 +1345,7 @@ const tabAktiv = id => $(id).classList.contains('aktiv');
 function aufzeichnungAnzeigen() {
   const d = zustand.daten, n = d.length, st = zustand.statistik;
   $('tab-zaehler').textContent = n ? n.toLocaleString('de-DE') : '';
-  $('csv').disabled = $('leeren').disabled = !n;
+  $('csv').disabled = $('leeren').disabled = $('bericht').disabled = !n;
   if (!tabAktiv('seite-aufz')) return;
 
   $('anzahl').textContent = n.toLocaleString('de-DE');
@@ -1432,7 +1521,8 @@ function zeichnen() {
   const fenster = +$('fenster').value * 1000;
   const ende = zustand.angehalten ?? (daten.length ? Math.max(Date.now(), daten[daten.length - 1].t) : Date.now());
   const anfang = fenster ? ende - fenster : (daten.length ? daten[0].t : ende - 60000);
-  zustand.bereichT = [anfang, Math.max(ende, anfang + 1000)];
+  // Gezoomt oder verschoben (js/verlauf.js)? Dann gilt dieser Bereich statt des Zeitfensters
+  zustand.bereichT = zustand.ansicht ? [...zustand.ansicht] : [anfang, Math.max(ende, anfang + 1000)];
   const [t0, t1] = zustand.bereichT;
   const i0 = Math.max(ersterIndexAb(daten, t0) - 1, 0);
   const i1 = ersterIndexAb(daten, t1 + 1);
@@ -1462,14 +1552,26 @@ function zeichnen() {
       const v = r[k.schluessel];
       if (v < min) min = v; if (v > max) max = v; summe += v; n++;
     }
+    // Min/Max/Mittel im Kopf: für den markierten Ausschnitt, sonst für das sichtbare Fenster
+    const st = { min, max, summe, n };
+    if (zustand.auswahl) {
+      Object.assign(st, { min: Infinity, max: -Infinity, summe: 0, n: 0 });
+      const [a0, a1] = zustand.auswahl;
+      for (let j = ersterIndexAb(daten, a0); j < daten.length && daten[j].t <= a1; j++) {
+        const r = daten[j];
+        if (!gilt(r)) continue;
+        const v = r[k.schluessel];
+        if (v < st.min) st.min = v; if (v > st.max) st.max = v; st.summe += v; st.n++;
+      }
+    }
     const fmt = v => {
       if (k.schluessel !== 'dmm') return zahl(v, k.stellen) + ' ' + einheit;
       const t = technisch(v, einheit); return t.zahl + ' ' + t.einheit;
     };
     const stat = s => k.box.querySelector(`[data-s="${s}"]`);
-    stat('min').textContent = n ? fmt(min) : '–';
-    stat('max').textContent = n ? fmt(max) : '–';
-    stat('mit').textContent = n ? fmt(summe / n) : '–';
+    stat('min').textContent = st.n ? fmt(st.min) : '–';
+    stat('max').textContent = st.n ? fmt(st.max) : '–';
+    stat('mit').textContent = st.n ? fmt(st.summe / st.n) : '–';
     k.box.querySelector('.titel').textContent = k.schluessel === 'dmm' && FUNKTIONEN[funk] ? `Multimeter · ${FUNKTIONEN[funk].name}` : k.titel;
     k.box.querySelector('.hover').textContent = hoverRec && gilt(hoverRec)
       ? `${uhrzeit(hoverRec.t)}  ${fmt(hoverRec[k.schluessel])}` : '';
@@ -1508,6 +1610,10 @@ function zeichnen() {
     // Kurve: bei vielen Punkten Min/Max je Pixelspalte, damit Spitzen sichtbar bleiben
     g.save();
     g.beginPath(); g.rect(RAND_L, RAND_O, iw, ih); g.clip();
+    if (zustand.auswahl) {   // markierter Ausschnitt als helle Fläche
+      const xa = x(zustand.auswahl[0]), xb = x(zustand.auswahl[1]);
+      g.globalAlpha = 0.14; g.fillStyle = farbe('--i'); g.fillRect(xa, RAND_O, xb - xa, ih); g.globalAlpha = 1;
+    }
     g.strokeStyle = farbe(k.farbe); g.lineWidth = 1.5; g.lineJoin = 'round';
     g.beginPath();
     let offen = false, spalte = null, sMin = 0, sMax = 0, sLetzt = 0;
@@ -1675,10 +1781,16 @@ $('rel').addEventListener('click', async () => {
   anzeigeAktualisieren();
 });
 
+// „Anhalten“ friert die Ansicht ein; „Weiter“ kehrt zum Mitlaufen zurück – auch nach Zoomen oder Verschieben
+function anhaltenKnopf() {
+  const steht = !!(zustand.angehalten || zustand.ansicht);
+  $('anhalten').textContent = steht ? 'Weiter' : 'Anhalten';
+  $('anhalten').classList.toggle('aktiv', steht);
+}
 $('anhalten').addEventListener('click', () => {
-  zustand.angehalten = zustand.angehalten ? null : Date.now();
-  $('anhalten').textContent = zustand.angehalten ? 'Weiter' : 'Anhalten';
-  $('anhalten').classList.toggle('aktiv', !!zustand.angehalten);
+  if (zustand.angehalten || zustand.ansicht) { zustand.angehalten = null; zustand.ansicht = null; }
+  else zustand.angehalten = Date.now();
+  anhaltenKnopf();
   zeichnenAnfordern();
 });
 $('fenster').addEventListener('change', zeichnenAnfordern);
@@ -1791,6 +1903,8 @@ $('menue').querySelectorAll('button').forEach(b => b.addEventListener('click', (
   if (b.dataset.aktion === 'updates') versionsDialog(true);
   else if (b.dataset.aktion === 'groesse') groessenDialog();
   else if (b.dataset.aktion === 'thema') themaWechseln();
+  else if (b.dataset.aktion === 'bericht') berichtDialog();   // js/bericht.js
+  else if (b.dataset.aktion === 'fern') fernDialog();         // js/fernanzeige.js
   else if (b.dataset.aktion === 'beenden') window.spm?.beenden();
 }));
 window.addEventListener('keydown', e => {
@@ -1996,5 +2110,10 @@ zeichnen();
 <script src="js/laufend.js"></script>
 <script src="js/vergleich.js"></script>
 <script src="js/bauteile.js"></script>
+<script src="js/feinverstellung.js"></script>
+<script src="js/pruefstand.js"></script>
+<script src="js/verlauf.js"></script>
+<script src="js/bericht.js"></script>
+<script src="js/fernanzeige.js"></script>
 </body>
 </html>

@@ -18,8 +18,10 @@
  * mit Fehlercode, wenn die Seite Fehler gemeldet hat.
  */
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, screen, shell } = require('electron');
+const { app, BrowserWindow, ClipboardItem, Menu, clipboard, dialog, ipcMain, nativeTheme, net, screen, shell } = require('electron');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const paket = require('./package.json');
@@ -320,6 +322,131 @@ ipcMain.handle('datei-anhaengen', (_e, id, text) => {
 });
 ipcMain.handle('datei-schliessen', (_e, id) => offeneDateien.delete(id));
 
+/* ------------------------------------------------------------ Bilder und Messbericht (SPM-25, SPM-26) */
+
+// Speichern: Dialog (im Selbsttest ohne Dialog in den Temp-Ordner); liefert den Pfad oder null
+async function speicherOrt(name, titel, filter) {
+    if (pruefen) return datei(path.basename(name));
+    const { canceled, filePath } = await dialog.showSaveDialog(fenster, { title: titel, defaultPath: path.join(app.getPath('documents'), name), filters: [filter] });
+    return canceled ? null : filePath;
+}
+const pngAusDataUrl = (url) => Buffer.from(String(url).replace(/^data:image\/png;base64,/, ''), 'base64');
+
+ipcMain.handle('bild-speichern', async (_e, name, url) => {
+    const pfad = await speicherOrt(name, 'Bild speichern', { name: 'PNG-Bild', extensions: ['png'] });
+    if (!pfad) return null;
+    fs.writeFileSync(pfad, pngAusDataUrl(url));
+    return pfad;
+});
+// Electron 44: Zwischenablage nach dem W3C-Muster (ClipboardItem mit Blob)
+ipcMain.handle('bild-kopieren', async (_e, url) => {
+    await clipboard.write([new ClipboardItem({ 'image/png': new Blob([pngAusDataUrl(url)], { type: 'image/png' }) })]);
+    return true;
+});
+
+// Messbericht: HTML in ein unsichtbares Fenster laden, mit Chromium zu PDF drucken, speichern, öffnen
+ipcMain.handle('bericht-pdf', async (_e, name, html) => {
+    const temp = path.join(os.tmpdir(), `owon-spm6103-bericht-${process.pid}-${Date.now()}.html`);
+    fs.writeFileSync(temp, html, 'utf8');
+    if (pruefen) fs.writeFileSync(datei('bericht.html'), html, 'utf8');   // der Selbsttest fotografiert die Seite
+    const druck = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
+    try {
+        await druck.loadFile(temp);
+        const pdf = await druck.webContents.printToPDF({ pageSize: 'A4', printBackground: true, margins: { marginType: 'none' } });
+        const pfad = await speicherOrt(name, 'Messbericht speichern', { name: 'PDF-Datei', extensions: ['pdf'] });
+        if (!pfad) return null;
+        fs.writeFileSync(pfad, pdf);
+        if (!pruefen) shell.openPath(pfad);
+        return pfad;
+    } finally {
+        druck.destroy();
+        fs.rmSync(temp, { force: true });
+    }
+});
+
+/* ------------------------------------------------------------ Fernanzeige im WLAN (SPM-27) */
+
+// Kleiner Webserver im eigenen Netz: Handy-Seite, /daten (JSON), /aus (nur wenn erlaubt). Alles nur mit Code.
+const fern = { server: null, code: '', notaus: false, daten: null, versuche: new Map(), port: 0 };
+const FERN_SEITE = path.join(__dirname, 'fern', 'index.html');
+
+function codeStimmt(gegeben) {
+    const a = Buffer.from(String(gegeben ?? '')), b = Buffer.from(fern.code);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Höchstens 10 falsche Codes je Adresse und Minute
+function gesperrt(ip) {
+    const v = fern.versuche.get(ip);
+    return v && v.anzahl >= 10 && Date.now() - v.seit < 60000;
+}
+function fehlversuch(ip) {
+    const v = fern.versuche.get(ip);
+    if (!v || Date.now() - v.seit > 60000) fern.versuche.set(ip, { anzahl: 1, seit: Date.now() });
+    else v.anzahl++;
+}
+
+function fernAntwort(anfrage, antwort) {
+    const url = new URL(anfrage.url, 'http://x');
+    const ip = anfrage.socket.remoteAddress;
+    const cookie = /(?:^|;\s*)spmcode=(\d+)/.exec(anfrage.headers.cookie ?? '')?.[1];
+    const code = url.searchParams.get('code') ?? anfrage.headers['x-code'] ?? cookie;
+    const kopf = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
+    if (gesperrt(ip)) { antwort.writeHead(429, kopf); return antwort.end('Zu viele falsche Codes'); }
+    const ok = code !== undefined && codeStimmt(code);
+    if (code !== undefined && !ok) fehlversuch(ip);
+
+    if (anfrage.method === 'GET' && url.pathname === '/') {
+        // Die Seite selbst fragt nach dem Code, wenn er fehlt; mit richtigem Code merkt sie ihn als Cookie
+        if (ok) kopf['Set-Cookie'] = `spmcode=${fern.code}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000`;
+        antwort.writeHead(200, { ...kopf, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'" });
+        return antwort.end(fs.readFileSync(FERN_SEITE));
+    }
+    if (!ok) { antwort.writeHead(401, kopf); return antwort.end('Zugangscode fehlt oder ist falsch'); }
+    if (anfrage.method === 'GET' && url.pathname === '/daten') {
+        antwort.writeHead(200, { ...kopf, 'Content-Type': 'application/json; charset=utf-8' });
+        return antwort.end(JSON.stringify({ ...(fern.daten ?? { t: 0 }), notaus: fern.notaus }));
+    }
+    if (anfrage.method === 'POST' && url.pathname === '/aus') {
+        if (!fern.notaus) { antwort.writeHead(403, kopf); return antwort.end('Im Programm nicht erlaubt'); }
+        fenster?.webContents.send('fern-befehl', 'aus');
+        antwort.writeHead(200, kopf);
+        return antwort.end('ok');
+    }
+    antwort.writeHead(404, kopf);
+    antwort.end();
+}
+
+// Adressen im lokalen Netz (192.168…, 10…, 172.16–31…), daraus die Links fürs Handy
+function lokaleAdressen(port) {
+    const privat = (a) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a);
+    return Object.values(os.networkInterfaces()).flat()
+        .filter((n) => n && n.family === 'IPv4' && !n.internal && privat(n.address))
+        .map((n) => `http://${n.address}:${port}/?code=${fern.code}`);
+}
+
+ipcMain.handle('fern-starten', async (_e, { port, code, notaus, nurEinstellungen }) => {
+    fern.notaus = !!notaus;
+    if (nurEinstellungen) return { ok: true };
+    if (!/^\d{6}$/.test(String(code))) return { ok: false, fehler: 'ungültiger Code' };
+    fern.code = String(code);
+    if (fern.server) { fern.server.close(); fern.server = null; }
+    const server = http.createServer(fernAntwort);
+    try {
+        await new Promise((ok, fehler) => { server.once('error', fehler); server.listen(port, '0.0.0.0', ok); });
+    } catch (e) {
+        return { ok: false, fehler: e.code ?? e.message };
+    }
+    fern.server = server; fern.port = server.address().port;
+    const adressen = lokaleAdressen(fern.port);
+    let qr = null;
+    try { if (adressen[0]) qr = await require('qrcode').toDataURL(adressen[0], { margin: 1, width: 440 }); } catch { /* ohne QR-Code geht es auch */ }
+    return { ok: true, adressen, qr, port: fern.port };
+});
+ipcMain.handle('fern-stoppen', () => { fern.server?.close(); fern.server = null; return true; });
+ipcMain.on('fern-daten', (_e, daten) => { fern.daten = daten; });
+app.on('before-quit', () => fern.server?.close());
+
 // Vergleich: CSV-Dateien auswählen und lesen (im Selbsttest: alle aus dem Prüf-Ordner)
 ipcMain.handle('csv-oeffnen', async () => {
     let pfade;
@@ -561,7 +688,8 @@ function pruefenLaufen() {
             await bisWahr("ak.laeuft", 3000);
             await warten(6000);
             fs.writeFileSync(bildName('automatik'), (await frischesBild()).toPNG());
-            await bisWahr("!ak.laeuft", 60000);
+            // erst fertig, wenn auch das Ergebnis dasteht – akEnde schaltet zwischendurch noch den Ausgang aus
+            await bisWahr("!ak.laeuft && document.getElementById('ak-status').textContent !== 'lädt'", 60000);
             zusatz.akku = await js("({ status: document.getElementById('ak-status').textContent, mah: Math.round(ak.ladung / 3.6 * 100) / 100, ausgang: zustand.ausgang, info: document.getElementById('ak-info').textContent })");
 
             // SPM-19 Bauteilprüfung: das Demo-Multimeter wechselt alle 5,5 s das Bauteil
@@ -594,6 +722,124 @@ function pruefenLaufen() {
             zusatz.liveScrollt = await js("document.querySelector('main').scrollHeight > document.querySelector('main').clientHeight + 1");
             fs.writeFileSync(bildName('live2'), (await frischesBild()).toPNG());
 
+            /* ---------- SPM-22 bis SPM-27 ---------- */
+            const neu = {};
+            await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click(); document.getElementById('demo-last').value = 'widerstand'; document.getElementById('demo-last').dispatchEvent(new Event('change'))");
+
+            // SPM-22 Feinverstellung: dreimal Mausrad = +30 mV, mit Umschalt +100 mV; nie über OVP
+            await js("sollwerteSetzen({ volt: 5, curr: 1, ovp: 10, ocp: 2 })");
+            await warten(800);
+            const rad = (auswahl, extra = '') => js(`document.querySelector('${auswahl}').dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true${extra} }))`);
+            for (let n = 0; n < 3; n++) await rad('.sollwert');
+            await rad('.sollwert', ', shiftKey: true');
+            await warten(1200);
+            neu.fein = await js('zustand.soll.volt');
+            await js("sollwerteSetzen({ ovp: 5.2 })");
+            await warten(600);
+            await rad('.sollwert', ', ctrlKey: true');
+            await warten(1200);
+            neu.feinGrenze = await js('zustand.soll.volt');
+
+            // SPM-23 Erst-Einschalten: an der LED bis 1,5 V fließt kein Strom → in Ordnung; am Widerstand bis 5 V → Abbruch
+            await js(`document.querySelector('.tab[data-seite="seite-pruefstand"]').click();
+                document.getElementById('demo-last').value = 'led'; document.getElementById('demo-last').dispatchEvent(new Event('change'));
+                for (const [id, w] of [['ee-name', 'Testplatine'], ['ee-ziel', '1,5'], ['ee-strom', '0,1'], ['ee-rampe', '1,5'], ['ee-grenze', '0,05'], ['ee-halten', '1']]) document.getElementById(id).value = w;
+                document.getElementById('ee-start').click()`);
+            await bisWahr('ee.laeuft', 3000);
+            await bisWahr('!ee.laeuft', 20000);
+            neu.ersteinGut = await js('({ ...ee.protokoll.at(-1), ausgang: zustand.ausgang })');
+            await js(`document.getElementById('demo-last').value = 'widerstand'; document.getElementById('demo-last').dispatchEvent(new Event('change'));
+                document.getElementById('ee-ziel').value = '5'; document.getElementById('ee-rampe').value = '3'; document.getElementById('ee-start').click()`);
+            await bisWahr('ee.laeuft', 3000);
+            await bisWahr('!ee.laeuft', 20000);
+            neu.ersteinSchlecht = await js('({ ...ee.protokoll.at(-1), ausgang: zustand.ausgang })');
+
+            // SPM-24 Zyklentest: 3 Zyklen im Fenster 0,1–2 A in Ordnung; dann Fenster bis 0,2 A → Fehler im 1. Zyklus, Halt
+            await js(`for (const [id, w] of [['zt-volt', '5'], ['zt-curr', '1'], ['zt-an', '1,5'], ['zt-aus', '0,5'], ['zt-zyklen', '3'], ['zt-einschwing', '0,3'], ['zt-min', '0,1'], ['zt-max', '2'], ['zt-fehler', 'halt']]) document.getElementById(id).value = w;
+                document.getElementById('zt-start').click()`);
+            await bisWahr('zt.laeuft', 3000);
+            await bisWahr('!zt.laeuft', 25000);
+            neu.zyklenGut = await js('({ ok: zt.ok, fehler: zt.fehler, status: document.getElementById("zt-status").textContent })');
+            await js("document.getElementById('zt-max').value = '0,2'; document.getElementById('zt-start').click()");
+            await bisWahr('zt.laeuft', 3000);
+            await bisWahr('!zt.laeuft', 20000);
+            neu.zyklenFehler = await js('({ ok: zt.ok, fehler: zt.fehler, status: document.getElementById("zt-status").textContent, ausgang: zustand.ausgang })');
+            fs.writeFileSync(bildName('pruefstand'), (await frischesBild()).toPNG());
+
+            // SPM-25 Verlauf: Mausrad zoomt, Umschalt+Ziehen markiert, Bild speichern/kopieren, Doppelklick zurück
+            await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click()");
+            await warten(400);
+            const kurve = await js("(() => { const r = KURVEN[0].canvas.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height }; })()");
+            await js(`KURVEN[0].canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, clientX: ${kurve.l + kurve.w * 0.6}, clientY: ${kurve.t + 40}, bubbles: true, cancelable: true }))`);
+            const zeiger = (art, x, shift) => js(`KURVEN[0].canvas.dispatchEvent(new PointerEvent('${art}', { clientX: ${x}, clientY: ${kurve.t + 40}, button: 0, pointerId: 1, shiftKey: ${shift}, bubbles: true }))`);
+            await zeiger('pointerdown', kurve.l + kurve.w * 0.45, true);
+            await zeiger('pointermove', kurve.l + kurve.w * 0.7, true);
+            await zeiger('pointerup', kurve.l + kurve.w * 0.7, true);
+            await warten(500);
+            neu.verlauf = await js("({ ansicht: !!zustand.ansicht, knopf: document.getElementById('anhalten').textContent, auswahl: !!zustand.auswahl, info: document.getElementById('auswahl-info').textContent })");
+            fs.writeFileSync(bildName('ausschnitt'), (await frischesBild()).toPNG());
+            await js("document.getElementById('bild-speichern').click()");
+            await warten(1200);
+            const bilder = fs.readdirSync(app.getPath('userData')).filter((n) => /^Verlauf_.*\.png$/.test(n));
+            neu.bild = bilder.length ? fs.readFileSync(path.join(app.getPath('userData'), bilder[0])).subarray(1, 4).toString() : '';
+            neu.kopiert = await js('window.spm.bildKopieren(bildAusLeinwaenden(verlaufTeile()))');
+            await js("KURVEN[0].canvas.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");
+            await warten(300);
+            neu.zurueck = await js("({ ansicht: zustand.ansicht, auswahl: zustand.auswahl, knopf: document.getElementById('anhalten').textContent })");
+
+            // SPM-26 Messbericht als PDF
+            await js("berichtDialog(); document.getElementById('br-titel').value = 'Testbericht'; document.getElementById('br-notiz').value = 'Selbsttest'; document.getElementById('br-ok').click()");
+            await bisWahr("!document.getElementById('bericht-dialog').open", 20000);
+            const pdfs = fs.readdirSync(app.getPath('userData')).filter((n) => /^Testbericht_.*\.pdf$/.test(n));
+            const pdf = pdfs.length ? fs.readFileSync(path.join(app.getPath('userData'), pdfs[0])) : Buffer.alloc(0);
+            neu.bericht = { datei: pdfs[0] ?? null, kopf: pdf.subarray(0, 5).toString(), groesse: pdf.length };
+            // Bild der Berichtsseite (das HTML, aus dem das PDF gedruckt wurde), etwa A4-Breite
+            const blatt = new BrowserWindow({ width: 794, height: 2400, useContentSize: true, show: false, webPreferences: { sandbox: true, javascript: false, offscreen: true } });
+            await blatt.loadFile(datei('bericht.html'));
+            await warten(800);
+            blatt.webContents.invalidate(); await warten(300);
+            try { fs.writeFileSync(bildName('bericht'), (await blatt.webContents.capturePage()).toPNG()); } catch (e) { fehler.push('Bericht-Bild: ' + e.message); }
+            blatt.destroy();
+
+            // SPM-27 Fernanzeige: Code nötig, Daten mit Code, „Ausgang aus“ nur wenn erlaubt, Sperre nach falschen Codes
+            await js("fernDialog(); document.getElementById('fe-port').value = '18765'; document.getElementById('fe-an').click()");
+            await bisWahr('fe.laeuft', 5000);
+            await warten(1200);
+            fs.writeFileSync(bildName('fern'), (await frischesBild()).toPNG());
+            const code = await js('feEinst.code');
+            const adresse = 'http://127.0.0.1:18765';
+            const holen = async (pfad, optionen = {}) => { try { const r = await fetch(adresse + pfad, optionen); return { status: r.status, text: await r.text(), cookie: r.headers.get('set-cookie') }; } catch (e) { return { status: 0, text: String(e) }; } };
+            const ohne = await holen('/daten');
+            const mit = await holen('/daten', { headers: { 'x-code': code } });
+            const seite = await holen('/?code=' + code);
+            await js('ausgangSchalten(true)');
+            await warten(800);
+            // Die Handy-Seite einmal in Handygröße öffnen – offscreen gezeichnet, ein zweites durchsichtiges Fenster lässt sich nicht abfotografieren
+            const handy = new BrowserWindow({ width: 390, height: 844, useContentSize: true, show: false, webPreferences: { sandbox: true, offscreen: true } });
+            await handy.loadURL(`${adresse}/?code=${code}`);
+            await warten(2500);
+            handy.webContents.invalidate(); await warten(400);
+            try { fs.writeFileSync(bildName('handy'), (await handy.webContents.capturePage()).toPNG()); } catch (e) { fehler.push('Handy-Bild: ' + e.message); }
+            const handyText = await handy.webContents.executeJavaScript("document.getElementById('status').textContent + ' | ' + document.getElementById('u').textContent");
+            handy.destroy();
+            const verboten = await holen('/aus', { method: 'POST', headers: { 'x-code': code } });
+            await js("document.getElementById('fe-notaus').click()");
+            await warten(400);
+            const erlaubt = await holen('/aus', { method: 'POST', headers: { 'x-code': code } });
+            await warten(1200);
+            const nachAus = await js('zustand.ausgang');
+            for (let n = 0; n < 11; n++) await holen('/daten', { headers: { 'x-code': '000000' } });
+            const gesperrtAntwort = await holen('/daten', { headers: { 'x-code': code } });
+            neu.fern = {
+                ohne: ohne.status, mit: mit.status, hatWerte: /"u":/.test(mit.text), seite: seite.status, cookie: /spmcode=/.test(seite.cookie ?? ''),
+                verboten: verboten.status, erlaubt: erlaubt.status, ausgangDanach: nachAus, sperre: gesperrtAntwort.status,
+                qr: await js("!document.getElementById('fe-qr').hidden"), adressen: await js('fe.adressen.length'), handy: handyText,
+            };
+            await js("document.getElementById('fe-an').click(); document.getElementById('fern-dialog').close()");
+            await warten(500);
+            await js("document.getElementById('fe-notaus').checked = false; document.getElementById('fe-notaus').dispatchEvent(new Event('change'))");
+            zusatz.neu = neu;
+
             // Hell/Dunkel: Vorgabe dunkel, Knopf schaltet um, Wahl bleibt gespeichert, Strg+Umschalt+L schaltet zurück
             const thema = { vorgabe: await js('document.documentElement.dataset.thema') };
             await js("document.getElementById('thema-knopf').click()");
@@ -622,7 +868,16 @@ function pruefenLaufen() {
                 && z.bauteile.gut + z.bauteile.schlecht >= 2 && z.laufend.dateien === 1 && z.laufend.zeilen > 50 && z.laufend.markierung && z.laufend.kopf
                 && z.vergleich.reihen === 2 && !z.liveScrollt
                 && z.thema.vorgabe === 'dunkel' && z.thema.jetzt === 'hell' && z.thema.gespeichert === 'hell' && z.thema.programm === 'hell'
-                && z.thema.hintergrund === 'rgb(238, 241, 245)' && z.thema.zurueck === 'dunkel' && z.thema.hintergrundDunkel === 'rgb(14, 17, 21)';
+                && z.thema.hintergrund === 'rgb(238, 241, 245)' && z.thema.zurueck === 'dunkel' && z.thema.hintergrundDunkel === 'rgb(14, 17, 21)'
+                && z.neu.fein === 5.13 && z.neu.feinGrenze === 5.19
+                && z.neu.ersteinGut.gut === true && z.neu.ersteinSchlecht.gut === false && z.neu.ersteinSchlecht.ausgang === false
+                && z.neu.zyklenGut.ok === 3 && z.neu.zyklenGut.fehler === 0 && z.neu.zyklenFehler.fehler === 1 && z.neu.zyklenFehler.ok === 0 && z.neu.zyklenFehler.ausgang === false
+                && z.neu.verlauf.ansicht && z.neu.verlauf.knopf === 'Weiter' && z.neu.verlauf.auswahl && z.neu.verlauf.info.startsWith('Ausschnitt')
+                && z.neu.bild === 'PNG' && z.neu.kopiert === true && z.neu.zurueck.ansicht === null && z.neu.zurueck.knopf === 'Anhalten'
+                && z.neu.bericht.kopf === '%PDF-' && z.neu.bericht.groesse > 20000
+                && z.neu.fern.ohne === 401 && z.neu.fern.mit === 200 && z.neu.fern.hatWerte && z.neu.fern.seite === 200 && z.neu.fern.cookie
+                && z.neu.fern.verboten === 403 && z.neu.fern.erlaubt === 200 && z.neu.fern.ausgangDanach === false && z.neu.fern.sperre === 429
+                && /^Demo-Modus \| \d/.test(z.neu.fern.handy);
 
             // Versionsvergleich
             const faelle = [['1.0.3', '1.0.2', 1], ['1.0.2', '1.0.2', 0], ['v1.10.0', '1.9.9', 1], ['1.0.2', '1.0.10', -1], ['2.0.0-beta', '2.0.0', -1], ['2.0', '2.0.0', 0]];
@@ -666,7 +921,7 @@ function pruefenLaufen() {
                 && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && konsole.sichtbar >= 6 && konsole.luecke <= 12
                 && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt
                 && vergleich.length === 0 && ['aktuell', 'neu', 'unbekannt'].includes(pruefung.symbol) && /^v\d+\.\d+\.\d+$/.test(pruefung.text)
-                && menue.offen && menue.punkte.length === 4 && update.dialog && update.knopf === 'neu' && update.menuePunkt
+                && menue.offen && menue.punkte.length === 6 && update.dialog && update.knopf === 'neu' && update.menuePunkt
                 && groesse.vorher === '1920x1080' && groesse.fenster === '1600 x 900' && !groesse.quer && groesse.gespeichert.breite === 1600
                 && zusatzOk && fehler.length === 0;
             console.log(JSON.stringify({ ok, zusatzOk, zusatz, schnittstelle, portwahl, werte, flaeche, aufz, vergleich, pruefung, menue, update, groesse, fehler, bild: bildDatei }, null, 1));

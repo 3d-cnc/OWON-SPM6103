@@ -1,7 +1,7 @@
 {
     "name": "owon-spm6103",
     "productName": "OWON SPM6103",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Live-Anzeige und Steuerung fuer das Labornetzteil mit Multimeter OWON SPM6103",
     "author": "cnc3d.tech",
     "repository": {
@@ -27,7 +27,8 @@
         "files": [
             "main.js",
             "preload.js",
-            "app/**/*"
+            "app/**/*",
+            "fern/**/*"
         ],
         "directories": {
             "output": "dist",
@@ -46,5 +47,8 @@
     "allowScripts": {
         "electron@44.5.1": true,
         "electron-winstaller": false
+    },
+    "dependencies": {
+        "qrcode": "^1.5.4"
     }
 }

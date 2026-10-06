@@ -29,8 +29,8 @@ die Felder um.
 
 Oben links:
 - Menü (Knopf mit den drei Strichen): Nach Updates suchen, Fenstergröße beim
-  Start (1280 x 720 bis 3840 x 2160 oder eigene), Helles/Dunkles Design,
-  Beenden (Strg+Q)
+  Start (1280 x 720 bis 3840 x 2160 oder eigene), Messbericht als PDF,
+  Fernanzeige im WLAN, Helles/Dunkles Design, Beenden (Strg+Q)
 - Neben dem Namen die Version mit Symbol, ein Klick öffnet die Versionsprüfung:
     grün ✓  auf dem neuesten Stand
     rot  ↑  Update verfügbar, "Update herunterladen" öffnet die Seite auf GitHub
@@ -45,6 +45,10 @@ lässt sich das im Fenster "Version und Updates".
 Tab "Live" (Strg+1):
 - Netzteil: Spannung, Strom und Leistung live, CV/CC, OVP/OCP/OTP-Meldungen,
   Ausgang ein/aus, Sollwerte für Spannung, Strom, OVP und OCP setzen
+- Feinverstellung wie am Drehknopf: Mausrad über einem Sollwert-Feld ändert
+  den Wert (Spannung ±10 mV, Strom ±1 mA; mit Umschalt ×10, mit Strg ×100).
+  Gesendet wird, sobald das Drehen kurz ruht. Nie über OVP bzw. OCP hinaus.
+  Im leeren Eingabefeld gehen auch die Pfeiltasten.
 - Multimeter: Messwert live, Funktion wählen (V DC/AC, A DC/AC, Ohm, C,
   Diode, Durchgang), Messbereich, Hold, Relativ
 - Vorlagen: Lieblingswerte als Knöpfe (z. B. 5 V USB). Ein Klick setzt
@@ -52,7 +56,11 @@ Tab "Live" (Strg+1):
   "+" speichert die aktuellen Sollwerte als neue Vorlage, Rechtsklick löscht.
 - Laufende Automatiken stehen als grüne Anzeige neben CV/CC, mit Stopp-Knopf
 - SCPI-Konsole, um beliebige Befehle von Hand zu schicken
-- Verlauf: vier Kurven mit Min/Max/Mittel im Zeitfenster, Werte unter der Maus
+- Verlauf: vier Kurven mit Min/Max/Mittel im Zeitfenster, Werte unter der Maus.
+  Mausrad zoomt, Ziehen verschiebt, Umschalt+Ziehen markiert einen Ausschnitt
+  (Min/Max/Mittel, Dauer, Energie und Ladung gelten dann dafür), Doppelklick
+  oder "Weiter" kehrt zum Mitlaufen zurück. "Bild" speichert die Kurven als
+  PNG, "Kopieren" legt sie in die Zwischenablage.
 - Markierung (Taste M): Zeitpunkt mit Notiz markieren. Erscheint als Linie in
   den Kurven, in der Tabelle der Aufzeichnung und in der CSV-Datei.
 
@@ -65,6 +73,9 @@ Tab "Aufzeichnung" (Strg+2):
 - Abgegebene Energie (Wh) und Ladung (Ah), Zeit mit Ausgang EIN, Zeit in CV/CC
 - Min/Max/Mittel der ganzen Aufzeichnung, auch je Multimeter-Funktion
 - Tabelle aller Messpunkte mit Markierungen; "Neueste anzeigen" läuft mit
+- Bericht (PDF): Übersicht, Energie, Kennwerte, die vier Kurven über die ganze
+  Aufzeichnung, Markierungen, Sollwerte und eine eigene Notiz – immer in
+  hellen Farben, öffnet sich nach dem Speichern
 
 Tab "Automatik" (Strg+3):
 - Abschalten: Ausgang aus nach einer Zeit, nach x Wh, nach x mAh oder wenn
@@ -78,23 +89,38 @@ Tab "Automatik" (Strg+3):
   Ladestrom, Ladeschluss und Abschaltstrom vor, lädt CC/CV und schaltet ab,
   wenn der Akku voll ist (NiMH nach Zeit). Lithium nur unter Aufsicht laden!
 
-Tab "Kennlinie" (Strg+4):
+Tab "Prüfstand" (Strg+4):
+- Erst-Einschalten für neue Platinen: mit kleiner Strombegrenzung langsam
+  hochfahren; greift die Begrenzung oder fließt zu früh Strom, sofort aus.
+  Danach Ruhestrom messen, Ergebnis "in Ordnung" oder nicht, Protokoll + CSV.
+- Zyklentest: Ausgang n-mal an und aus, in jeder An-Phase prüfen, ob der
+  Strom im erwarteten Bereich liegt; bei Fehler anhalten oder weiterzählen.
+
+Tab "Kennlinie" (Strg+5):
 - Spannung in Schritten hochfahren und je Schritt den Strom messen; Kurve
   "Strom über Spannung", Tabelle, CSV. Mehrere Kurven bleiben zum Vergleich.
   Bei LEDs und Dioden eine kleine Strombegrenzung wählen (z. B. 20 mA).
 
-Tab "Bauteile" (Strg+5):
+Tab "Bauteile" (Strg+6):
 - Bauteile mit dem Multimeter prüfen: Sollwert ± Toleranz oder Bereich.
   Großes GUT/AUSSERHALB, Zähler, Ausbeute, Protokoll als CSV. Zählt von selbst,
   sobald der Wert ruhig steht; Leertaste zählt von Hand.
 
-Tab "Vergleich" (Strg+6):
+Tab "Vergleich" (Strg+7):
 - Gespeicherte CSV-Dateien (auch laufend gespeicherte) und die aktuelle
   Aufzeichnung übereinanderlegen; Zeit ab Beginn oder ab erstem Einschalten
 
 Sicherheit: Abschalten, Alarme und Akku-Ende hängen an PC und USB-Kabel. Die
 harte Grenze bleiben OVP und OCP im Gerät – das Programm setzt sie bei
-Vorlagen, Ablauf, Kennlinie und Akku passend mit.
+Vorlagen, Ablauf, Kennlinie, Akku, Erst-Einschalten und Zyklentest passend mit.
+
+Fernanzeige im WLAN (Menü): Handy oder Tablet im selben Netz zeigen die Werte
+live – QR-Code scannen oder die angezeigte Adresse öffnen. Nur mit Zugangscode
+(6 Ziffern, "Neuer Code" sperrt alte Geräte aus), nach 10 falschen Versuchen
+eine Minute Sperre. Der Knopf "Ausgang aus" auf dem Handy erscheint nur, wenn
+er im Programm erlaubt ist. Beim ersten Einschalten fragt die Windows-Firewall:
+"Zugriff zulassen" für private Netzwerke wählen. Die Fernanzeige läuft nur,
+solange sie eingeschaltet ist; beim nächsten Start ist sie wieder aus.
 
 Außerdem:
 - Demo-Modus ohne Gerät; im Demo-Modus lässt sich die Last umschalten
@@ -111,7 +137,7 @@ Design: Oben rechts schaltet der Knopf mit Mond bzw. Sonne zwischen dunkel
 und hell um (auch Strg+Umschalt+L oder im Menü). Vorgabe ist dunkel, die Wahl
 bleibt gespeichert – unabhängig von der Windows-Einstellung.
 
-Tasten: Strg+1 bis Strg+6 Tabs, M Markierung, Strg+Umschalt+L Hell/Dunkel,
+Tasten: Strg+1 bis Strg+7 Tabs, M Markierung, Strg+Umschalt+L Hell/Dunkel,
 Strg+Q Beenden, F11 Vollbild, Strg + / Strg - Zoom, Strg 0 Zoom zurück.
 
 Befehle

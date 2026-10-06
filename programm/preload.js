@@ -23,4 +23,12 @@ contextBridge.exposeInMainWorld('spm', {
     dateiAnhaengen: (id, text) => ipcRenderer.invoke('datei-anhaengen', id, text),
     dateiSchliessen: (id) => ipcRenderer.invoke('datei-schliessen', id),
     csvOeffnen: () => ipcRenderer.invoke('csv-oeffnen'),
+    // Bilder, Messbericht, Fernanzeige
+    bildSpeichern: (name, url) => ipcRenderer.invoke('bild-speichern', name, url),
+    bildKopieren: (url) => ipcRenderer.invoke('bild-kopieren', url),
+    berichtPdf: (name, html) => ipcRenderer.invoke('bericht-pdf', name, html),
+    fernStarten: (einst) => ipcRenderer.invoke('fern-starten', einst),
+    fernStoppen: () => ipcRenderer.invoke('fern-stoppen'),
+    fernDaten: (daten) => ipcRenderer.send('fern-daten', daten),
+    beiFernBefehl: (rueckruf) => ipcRenderer.on('fern-befehl', (_e, b) => rueckruf(b)),
 });

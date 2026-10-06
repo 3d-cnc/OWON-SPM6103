@@ -2,13 +2,15 @@
 
 Windows-Programm, das Messwerte des Labornetzteils mit Multimeter **OWON SPM6103** live anzeigt und aufzeichnet. Es spricht über USB (CH340, SCPI) direkt mit dem Gerät und läuft als einzelne portable .exe.
 
-- **Tab „Live“:** Spannung, Strom und Leistung, CV/CC, Schutzmeldungen, Ausgang, Sollwerte und Sollwert-Vorlagen. Dazu der Multimeter-Wert mit Wahl der Messfunktion und des Messbereichs, eine SCPI-Konsole, vier Kurven und Markierungen mit Notiz (Taste M).
-- **Tab „Aufzeichnung“:** CSV-Export für Excel, laufendes Speichern während der Messung, Energie (Wh) und Ladung (Ah), Kennwerte der ganzen Aufzeichnung und eine Tabelle aller Messpunkte.
+- **Tab „Live“:** Spannung, Strom und Leistung, CV/CC, Schutzmeldungen, Ausgang, Sollwerte (auch per Mausrad wie am Drehknopf) und Sollwert-Vorlagen. Dazu der Multimeter-Wert mit Wahl der Messfunktion und des Messbereichs, eine SCPI-Konsole, vier Kurven zum Zoomen und Verschieben mit Ausschnitt-Auswertung, Kurven als Bild, Markierungen mit Notiz (Taste M).
+- **Tab „Aufzeichnung“:** CSV-Export für Excel, laufendes Speichern während der Messung, Messbericht als PDF, Energie (Wh) und Ladung (Ah), Kennwerte der ganzen Aufzeichnung und eine Tabelle aller Messpunkte.
 - **Tab „Automatik“:** Abschalten nach Zeit, Wh, mAh oder bei kleinem Strom; Grenzwerte mit Alarm; Ablaufprogramme mit Rampen; Akku laden (Li-Ion, LiHV, LiFePO4, Blei, NiMH).
+- **Tab „Prüfstand“:** Erst-Einschalten neuer Platinen (langsam hochfahren, bei Auffälligkeit sofort aus, Ruhestrom prüfen) und Zyklentest mit Fehlererkennung.
 - **Tab „Kennlinie“:** U-I-Kennlinien aufnehmen, etwa von LEDs, Dioden oder Motoren, mehrere Kurven im Vergleich.
 - **Tab „Bauteile“:** Bauteile mit dem Multimeter prüfen (Gut/Schlecht, Zähler, Protokoll).
 - **Tab „Vergleich“:** gespeicherte Aufzeichnungen und die aktuelle übereinanderlegen.
-- **Menü:** Nach Updates suchen, Fenstergröße beim Start (Vorgabe 1920 × 1080), Hell/Dunkel und Beenden.
+- **Menü:** Nach Updates suchen, Fenstergröße beim Start (Vorgabe 1920 × 1080), Messbericht als PDF, Fernanzeige im WLAN, Hell/Dunkel und Beenden.
+- **Fernanzeige:** kleine Webseite fürs Handy im eigenen WLAN (QR-Code), nur mit Zugangscode, wahlweise mit „Ausgang aus“.
 - **Design:** dunkel als Vorgabe, hell per Knopf oben rechts (Mond/Sonne) oder Strg+Umschalt+L; die Wahl bleibt gespeichert.
 - **Versionsprüfung:** Neben dem Namen stehen die Version und ein Symbol. Es ist grün, wenn das Programm aktuell ist, rot, wenn es ein Update gibt, und grau, wenn sich das nicht prüfen lässt. Gefragt wird nach dem neuesten GitHub-Release dieses Repositorys.
 - Ein Demo-Modus funktioniert ohne Gerät.
@@ -20,9 +22,10 @@ Bedienung und Fehlersuche: [LIESMICH.txt](LIESMICH.txt). Stand und offene Punkte
 | Pfad | Inhalt |
 |---|---|
 | `programm/app/index.html` | Oberfläche und Gerätelogik (Web Serial, SCPI, Kurven, Aufzeichnung, Demo-Gerät) |
-| `programm/app/js/` | Zusatzfunktionen, je eine Datei: Vorlagen, Markierungen, Überwachung (Abschalten, Alarme), Ablauf, Akku, Kennlinie, laufend speichern, Vergleich, Bauteile; gemeinsame Bausteine in `gemeinsam.js` |
+| `programm/app/js/` | Zusatzfunktionen, je eine Datei: Vorlagen, Markierungen, Überwachung (Abschalten, Alarme), Ablauf, Akku, Kennlinie, laufend speichern, Vergleich, Bauteile, Feinverstellung, Prüfstand, Verlauf (Zoom, Bild), Bericht, Fernanzeige; gemeinsame Bausteine in `gemeinsam.js` |
+| `programm/fern/index.html` | Seite der Fernanzeige fürs Handy (liefert der Webserver in `main.js`) |
 | `programm/app/funktionen.css` | Aussehen der Zusatzfunktionen |
-| `programm/main.js` | Electron-Hülle: Fenster 1920 × 1080, Auswahl des COM-Ports, Speicherdialog, Selbsttest |
+| `programm/main.js` | Electron-Hülle: Fenster 1920 × 1080, Auswahl des COM-Ports, Speicherdialoge, PDF-Druck, Webserver der Fernanzeige, Selbsttest |
 | `programm/preload.js` | Brücke zwischen Seite und Programm (`window.spm`) |
 | `programm/build/icon.png` | Programmsymbol |
 
@@ -52,6 +55,7 @@ Der Selbsttest startet das Programm in einem durchsichtigen Fenster im Demo-Modu
 - den Versionsvergleich, die Versionsprüfung, das Menü und den Update-Hinweis,
 - dass ein Wechsel der Fenstergröße auf 1600 × 900 sofort gilt und gespeichert wird,
 - dass Dunkel die Vorgabe ist und der Wechsel auf Hell wirkt und gespeichert wird (mit Bildern einiger Tabs in Hell),
-- jede Zusatzfunktion einmal echt: Vorlage, Markierung, Alarm mit Abschalten, Abschalten nach Zeit, Ablauf mit Rampe, Kennlinie an der Demo-LED, Ladung des Demo-Akkus bis „voll“, Bauteilprüfung, laufendes Speichern und Laden der Datei im Vergleich.
+- jede Zusatzfunktion einmal echt: Vorlage, Markierung, Alarm mit Abschalten, Abschalten nach Zeit, Ablauf mit Rampe, Kennlinie an der Demo-LED, Ladung des Demo-Akkus bis „voll“, Bauteilprüfung, laufendes Speichern und Laden der Datei im Vergleich,
+- Feinverstellung (auch die Grenze an OVP), Erst-Einschalten (einmal in Ordnung, einmal Abbruch), Zyklentest (in Ordnung und mit Fehler), Zoomen und Ausschnitt im Verlauf, Bild speichern und kopieren, Messbericht als PDF (mit Bild der Berichtsseite), Fernanzeige (Code nötig, Daten, „Ausgang aus“ nur wenn erlaubt, Sperre nach falschen Codes, Bild der Handy-Seite).
 
 Dabei speichert er Bilder der Tabs, des Menüs und der Dialoge. Bei einem Fehler endet er mit Exit-Code 1. Er funktioniert auch mit der fertigen .exe.

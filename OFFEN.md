@@ -37,7 +37,7 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 ## Offene Vorschläge
 
 Nummern mit dem Vorsatz SPM, damit sie sich nicht mit den Vorschlägen der Webseite überschneiden;
-nie neu vergeben. Vergeben sind SPM-1 bis SPM-19, **die nächste ist SPM-20**.
+nie neu vergeben. Vergeben sind SPM-1 bis SPM-29, **die nächste ist SPM-30**.
 
 | Nr. | Vorschlag |
 |---|---|
@@ -55,6 +55,24 @@ nie neu vergeben. Vergeben sind SPM-1 bis SPM-19, **die nächste ist SPM-20**.
 | Nr. | Vorschlag |
 |---|---|
 | SPM-9 | **Repo öffentlich schalten** (Marco, 06.10.: „kann auf die Todo-Liste“). Am 06.10. geprüft: Im Verlauf liegen weder OWONs PDF noch eine .exe noch Passwörter oder Schlüssel. Sinnvoll vorher: SPM-7 (Lizenz, README). Dann `gh repo edit 3d-cnc/OWON-SPM6103 --visibility public --accept-visibility-change-consequences`. Ab da funktioniert die Versionsprüfung (graues Symbol wird grün/rot), und SPM-2 und SPM-3 werden möglich. |
+
+### Weitere Funktionen (Vorschläge vom 06.10., nach 1.3.0)
+
+| Nr. | Vorschlag |
+|---|---|
+| SPM-20 | **Von selbst wieder verbinden:** den zuletzt benutzten COM-Port merken, auf Wunsch beim Start gleich verbinden, und nach einem USB-Abriss oder Aus- und Einschalten des Netzteils selbst neu verbinden – die Aufzeichnung läuft in derselben Sitzung weiter, die Lücke wird markiert. |
+| SPM-21 | **Schleppzeiger und Glättung im Tab Live:** unter jedem großen Wert Min und Max seit dem letzten Zurücksetzen (z. B. höchster Strom beim Einschalten eines Motors), dazu wahlweise ein gleitender Mittelwert über 4, 10 oder 50 Messungen gegen unruhige Anzeigen. |
+| SPM-22 | **Sollwerte feinfühlig verstellen wie am Drehknopf:** Mausrad oder Pfeiltasten über Spannung bzw. Strom ändern den Sollwert in wählbaren Schritten (1 mV … 1 V, mit Umschalt grob). Mit Bestätigung oder sofort, einstellbar; nützlich beim Herantasten an eine Schwelle. |
+| SPM-23 | **Erst-Einschalten-Assistent für neue Platinen:** kleine Strombegrenzung, Spannung langsam bis zum Ziel hochfahren, dabei auf Auffälligkeiten achten (Strom steigt früh an, Strombegrenzung greift, Ruhestrom über Grenze) und sofort abschalten. Am Ende ein kurzes Protokoll „Ruhestrom 23 mA bei 5,00 V – in Ordnung“. |
+| SPM-24 | **Zyklentest mit Fehlererkennung:** Ausgang n-mal an und aus (z. B. für Relais, Lüfter, Netzteile im Test), in jeder An-Phase prüfen, ob der Strom im erwarteten Fenster liegt; bei einem Fehler anhalten und die Zyklusnummer festhalten. Zähler und Protokoll wie bei der Bauteilprüfung. |
+| SPM-25 | **Verlauf zoomen und verschieben:** Mausrad zoomt die Zeitachse, Ziehen verschiebt, ein markierter Bereich zeigt Min/Max/Mittel, Dauer und Energie nur für diesen Ausschnitt. Kurven als Bild speichern oder in die Zwischenablage kopieren. |
+| SPM-26 | **Messbericht als PDF:** Kurven, Kennwerte, Markierungen, Energie, Geräte- und Programmversion, dazu ein freies Notizfeld („Platine Rev. B, Lüfter 120 mm“). Für Dokumentation oder Kunden; über die PDF-Funktion von Electron, keine Zusatzsoftware. |
+| SPM-27 | **Fernanzeige im Netzwerk:** das Programm stellt eine kleine Seite im eigenen WLAN bereit, das Handy oder Tablet zeigt Spannung, Strom, Multimeter und Kurven live – nur lesen, wahlweise mit „Ausgang aus“-Knopf. Nur im lokalen Netz, abschaltbar, mit Zugangscode. |
+| SPM-28 | **Benachrichtigung aufs Handy:** bei Alarm, Abschaltung oder „Akku voll“ eine Nachricht aufs Handy, etwa über ntfy (kostenlose App, kein Konto nötig) oder per E-Mail. Nur wenn eingeschaltet; übertragen wird nur der Meldungstext. |
+| SPM-29 | **Rechenkanal mit eigener Formel:** eine zusätzliche Kurve und CSV-Spalte aus U, I, P und dem Multimeter-Wert, z. B. Widerstand = U/I, Wirkungsgrad mit bekannter Last, oder **Temperatur aus einem NTC** am Multimeter (Ω → °C nach Datenblatt-B-Wert). Mit Einheit und eigenem Namen; Alarme und Abschalten können ihn ebenfalls nutzen. |
+
+SPM-20 bis SPM-29 sind voneinander unabhängig. SPM-23 und SPM-24 bauen auf dem Ablaufprogramm auf und setzen
+wie dieses voraus, dass die Setzbefehle am echten Gerät geprüft sind.
 
 SPM-1 und SPM-2 sind Alternativen; Marco entscheidet. Verworfen, weil nicht kostenlos oder ohne
 Nutzen: ein selbst signiertes Zertifikat (SmartScreen warnt trotzdem), Azure Artifact Signing

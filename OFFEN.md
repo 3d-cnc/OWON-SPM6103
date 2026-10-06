@@ -1,12 +1,12 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.0.2 liegt auf  und als Release
-[v1.0.2](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.2) (, nicht signiert).
-Selbsttest: Downloading Electron binary... in .
+Stand 06.10.2026: Version 1.0.2 liegt auf `main` und als Release
+[v1.0.2](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.2) (`OWON-SPM6103.exe`, nicht signiert).
+Selbsttest: `npx electron . --pruefen=bild.png` in `programm/`.
 
 **Am echten Gerät bestätigt** (Marcos Bild vom 06.10., Version 1.0.1): Verbinden klappt, und die
-Antworten haben genau das Format aus OWONs Anleitung –  liefert sieben Werte
-(),  z. B. .
+Antworten haben genau das Format aus OWONs Anleitung – `MEAS:ALL:INFO?` liefert sieben Werte
+(`0.002 0.000 0.000 0 0 0 0`), `CONF:ALL?` z. B. `VOLT:AC,+231.89V,AUTO,750V`.
 
 ## Liegt bei Marco
 

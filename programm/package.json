@@ -1,0 +1,46 @@
+{
+    "name": "owon-spm6103",
+    "productName": "OWON SPM6103",
+    "version": "1.0.0",
+    "description": "Live-Anzeige und Steuerung fuer das Labornetzteil mit Multimeter OWON SPM6103",
+    "author": "cnc3d.tech",
+    "private": true,
+    "type": "commonjs",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "pruefen": "electron . --pruefen",
+        "bauen": "electron-builder --win portable --publish never && node -e \"require('fs').renameSync('dist/OWON SPM6103.exe', '../OWON SPM6103.exe')\""
+    },
+    "devDependencies": {
+        "electron": "44.5.1",
+        "electron-builder": "^26.15.3"
+    },
+    "build": {
+        "appId": "tech.cnc3d.owon-spm6103",
+        "productName": "OWON SPM6103",
+        "copyright": "cnc3d.tech",
+        "files": [
+            "main.js",
+            "preload.js",
+            "app/**/*"
+        ],
+        "directories": {
+            "output": "dist",
+            "buildResources": "build"
+        },
+        "win": {
+            "target": [
+                "portable"
+            ],
+            "icon": "build/icon.png"
+        },
+        "portable": {
+            "artifactName": "OWON SPM6103.${ext}"
+        }
+    },
+    "allowScripts": {
+        "electron@44.5.1": true,
+        "electron-winstaller": false
+    }
+}

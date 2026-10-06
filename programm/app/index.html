@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OWON SPM6103</title>
+<style>
+:root {
+  --bg: #0e1115; --panel: #161a20; --panel2: #1c2129; --line: #2a313b; --text: #e6e9ee; --muted: #8b95a3;
+  --u: #f5c542; --i: #4fc3f7; --p: #ef7d6c; --d: #7ddc8a;
+  --ok: #3ecf72; --warn: #ffa94d; --err: #ff5c5c; --knopf: #252c36; --knopf-hover: #2f3844;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #eef1f5; --panel: #ffffff; --panel2: #f6f8fa; --line: #d6dce4; --text: #1b2027; --muted: #5f6b7a;
+    --u: #a87700; --i: #0277bd; --p: #c63d2f; --d: #2e7d32;
+    --ok: #1f9d55; --warn: #c76a00; --err: #d32f2f; --knopf: #e8ecf1; --knopf-hover: #dde3ea;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+header { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 9px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+header .rechts { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; padding: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; }
+.tab { background: transparent; border: 0; border-radius: 6px; padding: 5px 16px; color: var(--muted); font-weight: 600; }
+.tab:hover:not(:disabled) { background: var(--knopf); color: var(--text); }
+.tab.aktiv, .tab.aktiv:hover { background: var(--knopf-hover); color: var(--text); outline: none; }
+.tab .zaehler { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+#status { display: flex; align-items: center; gap: 8px; color: var(--muted); min-width: 0; }
+#status .punkt { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+#status.verbunden .punkt { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+#status.demo .punkt { background: var(--warn); }
+#status.fehler .punkt { background: var(--err); }
+#idn { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30vw; }
+button, select, input { font: inherit; color: inherit; }
+button { background: var(--knopf); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--knopf-hover); }
+button:disabled { opacity: .45; cursor: default; }
+button.haupt { background: var(--i); color: #06222f; border-color: transparent; font-weight: 600; }
+button.haupt:hover:not(:disabled) { background: var(--i); filter: brightness(1.1); }
+button.aktiv { outline: 2px solid var(--d); outline-offset: -2px; }
+select, input[type=text] { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+input[type=text] { width: 100%; }
+label.klein { color: var(--muted); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+#meldung { flex: none; display: none; margin: 12px 16px 0; background: color-mix(in srgb, var(--err) 18%, var(--panel)); border: 1px solid var(--err); border-radius: 8px; padding: 10px 14px; }
+#meldung.sichtbar { display: block; }
+main { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; }
+.seite { display: none; height: 100%; gap: 14px; }
+.seite.aktiv { display: grid; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; min-height: 0; }
+.panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 0 0 12px; font-weight: 600; display: flex; align-items: center; gap: 10px; min-height: 26px; }
+.panel h2 .rechts { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; display: flex; gap: 8px; align-items: center; }
+.zeile { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.hinweis { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+
+/* ---------- Live ---------- */
+#seite-live { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, .85fr); grid-template-rows: auto minmax(0, 1fr); }
+.verlauf { grid-column: 1 / -1; display: flex; flex-direction: column; }
+.anzeigen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.anzeige { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; container-type: inline-size; }
+.anzeige .name { color: var(--muted); font-size: 12px; }
+.anzeige .wert { font-family: var(--mono); font-size: clamp(22px, 21cqi, 68px); line-height: 1.15; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.anzeige .wert small { font-size: .45em; margin-left: 4px; color: var(--muted); }
+.anzeige.u .wert { color: var(--u); } .anzeige.i .wert { color: var(--i); } .anzeige.p .wert { color: var(--p); }
+.marke { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.marke.cv { color: var(--ok); border-color: var(--ok); } .marke.cc { color: var(--warn); border-color: var(--warn); }
+.marke.fehler { color: #fff; background: var(--err); border-color: var(--err); }
+.marke.aus { opacity: .35; }
+#ausgang { min-width: 150px; font-weight: 700; padding: 9px 14px; }
+#ausgang.an { background: var(--ok); color: #04210f; border-color: transparent; }
+.sollwerte { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.sollwert { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.sollwert .name { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.sollwert .name b { font-family: var(--mono); color: var(--text); font-weight: 400; }
+.sollwert .eingabe { display: flex; gap: 6px; margin-top: 6px; }
+.sollwert .eingabe input { min-width: 0; font-family: var(--mono); }
+.sollwert .eingabe button { padding: 5px 9px; }
+.dmm-wert { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; container-type: inline-size; }
+.dmm-wert .oben { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; gap: 8px; }
+.dmm-wert .wert { font-family: var(--mono); font-size: clamp(34px, 13cqi, 88px); color: var(--d); line-height: 1.12; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dmm-wert .wert small { font-size: .42em; color: var(--muted); margin-left: 6px; }
+.funktionen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.funktionen button { padding: 7px 4px; }
+.konsole { display: flex; flex-direction: column; }
+#konsole-log { flex: 1; min-height: 120px; overflow: auto; font-family: var(--mono); font-size: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; white-space: pre-wrap; word-break: break-all; }
+#konsole-log .aus { color: var(--i); } #konsole-log .ein { color: var(--d); } #konsole-log .err { color: var(--err); } #konsole-log .info { color: var(--muted); }
+.konsole-eingabe { display: flex; gap: 8px; margin-top: 8px; }
+.konsole-eingabe input { font-family: var(--mono); }
+#diagramme { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); }
+.diagramm { display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 6px; }
+.diagramm:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.diagramm .kopf { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); align-items: baseline; }
+.diagramm .kopf .titel { font-weight: 600; font-size: 13px; }
+.diagramm .kopf .hover { margin-left: auto; font-family: var(--mono); color: var(--text); }
+.diagramm .kopf span.stat { font-family: var(--mono); }
+.diagramm canvas { display: block; width: 100%; flex: 1; min-height: 70px; cursor: crosshair; }
+.verlauf .hinweis { flex: none; }
+
+/* ---------- Aufzeichnung ---------- */
+#seite-aufz { grid-template-columns: 460px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.aufz-links { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto; }
+.kacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kachel { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.kachel .name { color: var(--muted); font-size: 12px; }
+.kachel .zahl { font-family: var(--mono); font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kachel .zahl.klein { font-size: 15px; padding-top: 6px; }
+.kachel.u .zahl { color: var(--u); } .kachel.i .zahl { color: var(--i); } .kachel.p .zahl { color: var(--p); }
+table.kennwerte { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.kennwerte th { color: var(--muted); font-weight: 600; font-size: 12px; text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.kennwerte th:first-child { text-align: left; }
+table.kennwerte td { padding: 6px; text-align: right; font-family: var(--mono); border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.kennwerte td:first-child { text-align: left; font-family: inherit; font-weight: 600; }
+table.kennwerte tr:last-child td { border-bottom: 0; }
+.tabelle-panel { display: flex; flex-direction: column; }
+.raster { display: grid; grid-template-columns: 80px 200px repeat(3, 130px) 90px 80px minmax(160px, 1fr); gap: 0 12px; align-items: center; padding: 0 12px; }
+.tabelle-kopf { color: var(--muted); font-size: 12px; font-weight: 600; height: 30px; border-bottom: 1px solid var(--line); }
+.tabelle-kopf > div, .tz > div { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabelle-kopf > div:nth-child(2), .tz > div:nth-child(2), .tabelle-kopf > div:last-child, .tz > div:last-child { text-align: left; }
+.tabelle { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+#tabelle-zeilen { position: absolute; left: 0; right: 0; top: 0; }
+.tz { height: 26px; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tz.g { background: color-mix(in srgb, var(--panel2) 70%, transparent); }
+.tz .u { color: var(--u); } .tz .i { color: var(--i); } .tz .p { color: var(--p); } .tz .d { color: var(--d); }
+.tz .gedimmt { color: var(--muted); }
+.tabelle-leer { color: var(--muted); padding: 24px 12px; }
+
+#portwahl { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 18px; width: min(520px, calc(100vw - 32px)); }
+#portwahl::backdrop { background: rgba(0, 0, 0, .55); }
+#portwahl h3 { margin: 0 0 4px; font-size: 16px; }
+#portliste { display: grid; gap: 6px; margin-top: 12px; max-height: 50vh; overflow: auto; }
+#portliste .port { display: grid; grid-template-columns: 70px 1fr; gap: 0 10px; text-align: left; padding: 9px 12px; }
+#portliste .port b { font-family: var(--mono); grid-row: span 2; align-self: center; }
+#portliste .port small { color: var(--muted); }
+#portliste .port.aktiv { outline: 2px solid var(--i); outline-offset: -2px; }
+#portliste .leer { color: var(--muted); margin: 6px 0; }
+
+/* Ausgelegt auf 1920 x 1080; kleinere Fenster ordnen um und scrollen */
+@media (max-width: 1500px), (max-height: 860px) {
+  .seite.aktiv { height: auto; }
+  #seite-live { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: none; }
+  .konsole { grid-column: 1 / -1; }
+  #konsole-log { height: 180px; flex: none; }
+  #diagramme { display: block; }
+  .diagramm canvas { flex: none; height: 120px; }
+  #seite-aufz { height: calc(100vh - 90px); min-height: 520px; }
+}
+@media (max-width: 980px) {
+  #seite-live, #seite-aufz { grid-template-columns: minmax(0, 1fr); }
+  #seite-aufz { height: auto; }
+  .tabelle { height: 60vh; flex: none; }
+  .sollwerte { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>OWON SPM6103</h1>
+  <nav class="tabs" role="tablist">
+    <button class="tab aktiv" role="tab" data-seite="seite-live">Live</button>
+    <button class="tab" role="tab" data-seite="seite-aufz">Aufzeichnung<span class="zaehler" id="tab-zaehler"></span></button>
+  </nav>
+  <div id="status"><span class="punkt"></span><span id="status-text">Nicht verbunden</span><span id="idn"></span></div>
+  <div class="rechts">
+    <label class="klein">Baudrate
+      <select id="baud">
+        <option value="auto" selected>automatisch</option>
+        <option>115200</option><option>57600</option><option>38400</option><option>19200</option><option>9600</option>
+      </select>
+    </label>
+    <label class="klein">Abfrage
+      <select id="intervall">
+        <option value="0">so schnell wie möglich</option>
+        <option value="100">alle 0,1 s</option>
+        <option value="250" selected>alle 0,25 s</option>
+        <option value="500">alle 0,5 s</option>
+        <option value="1000">jede Sekunde</option>
+        <option value="5000">alle 5 s</option>
+      </select>
+    </label>
+    <button id="verbinden" class="haupt">Verbinden</button>
+    <button id="demo">Demo</button>
+  </div>
+</header>
+
+<div id="meldung"></div>
+
+<main>
+  <!-- ======================= Tab 1: Live ======================= -->
+  <div class="seite aktiv" id="seite-live">
+    <section class="panel">
+      <h2>Netzteil <span class="rechts"><span id="rate" class="klein"></span></span></h2>
+      <div class="anzeigen">
+        <div class="anzeige u"><div class="name">Spannung</div><div class="wert"><span id="u">–</span><small>V</small></div></div>
+        <div class="anzeige i"><div class="name">Strom</div><div class="wert"><span id="i">–</span><small>A</small></div></div>
+        <div class="anzeige p"><div class="name">Leistung</div><div class="wert"><span id="p">–</span><small>W</small></div></div>
+      </div>
+      <div class="zeile">
+        <button id="ausgang" disabled>Ausgang –</button>
+        <span id="m-modus" class="marke aus">–</span>
+        <span id="m-ovp" class="marke aus" title="Überspannungsschutz ausgelöst">OVP</span>
+        <span id="m-ocp" class="marke aus" title="Überstromschutz ausgelöst">OCP</span>
+        <span id="m-otp" class="marke aus" title="Übertemperatur">OTP</span>
+      </div>
+      <div class="sollwerte">
+        <div class="sollwert"><div class="name">Spannung <b id="s-volt">–</b></div>
+          <div class="eingabe"><input type="text" id="e-volt" inputmode="decimal" placeholder="V"><button data-setze="VOLT" data-feld="e-volt" data-max="60">Setzen</button></div></div>
+        <div class="sollwert"><div class="name">Strom <b id="s-curr">–</b></div>
+          <div class="eingabe"><input type="text" id="e-curr" inputmode="decimal" placeholder="A"><button data-setze="CURR" data-feld="e-curr" data-max="10">Setzen</button></div></div>
+        <div class="sollwert"><div class="name">OVP <b id="s-ovp">–</b></div>
+          <div class="eingabe"><input type="text" id="e-ovp" inputmode="decimal" placeholder="V"><button data-setze="VOLT:LIM" data-feld="e-ovp" data-max="66">Setzen</button></div></div>
+        <div class="sollwert"><div class="name">OCP <b id="s-ocp">–</b></div>
+          <div class="eingabe"><input type="text" id="e-ocp" inputmode="decimal" placeholder="A"><button data-setze="CURR:LIM" data-feld="e-ocp" data-max="11">Setzen</button></div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Multimeter</h2>
+      <div class="dmm-wert">
+        <div class="oben"><span id="dmm-funktion">–</span><span id="dmm-bereich"></span></div>
+        <div class="wert"><span id="dmm">–</span><small id="dmm-einheit"></small></div>
+      </div>
+      <div class="funktionen" id="funktionen"></div>
+      <div class="zeile">
+        <label class="klein">Messbereich <select id="bereich" disabled></select></label>
+        <button id="hold" disabled>Hold</button>
+        <button id="rel" disabled title="Relativmessung: aktueller Wert wird zu null">Relativ</button>
+      </div>
+    </section>
+
+    <section class="panel konsole">
+      <h2>SCPI-Konsole <span class="rechts"><label class="klein"><input type="checkbox" id="alles-loggen"> Abfragen mitschreiben</label></span></h2>
+      <div id="konsole-log"></div>
+      <div class="konsole-eingabe">
+        <input type="text" id="konsole-eingabe" placeholder="z. B. *IDN?  oder  MEAS:ALL:INFO?" disabled>
+        <button id="konsole-senden" disabled>Senden</button>
+      </div>
+    </section>
+
+    <section class="panel verlauf">
+      <h2>Verlauf
+        <span class="rechts">
+          <label class="klein">Zeitfenster
+            <select id="fenster">
+              <option value="30">30 s</option><option value="60" selected>1 min</option><option value="300">5 min</option>
+              <option value="900">15 min</option><option value="3600">1 h</option><option value="0">alles</option>
+            </select>
+          </label>
+          <button id="anhalten">Anhalten</button>
+        </span>
+      </h2>
+      <div id="diagramme"></div>
+      <p class="hinweis">Maus über die Kurven: Werte zu diesem Zeitpunkt. Min, Max und Mittel gelten für das sichtbare Zeitfenster; die Multimeter-Kurve zeigt nur die aktuelle Messfunktion.</p>
+    </section>
+  </div>
+
+  <!-- ======================= Tab 2: Aufzeichnung ======================= -->
+  <div class="seite" id="seite-aufz">
+    <div class="aufz-links">
+      <section class="panel">
+        <h2>Aufzeichnung</h2>
+        <div class="kacheln">
+          <div class="kachel"><div class="name">Messpunkte</div><div class="zahl" id="anzahl">0</div></div>
+          <div class="kachel"><div class="name">Dauer</div><div class="zahl" id="dauer">–</div></div>
+          <div class="kachel"><div class="name">Beginn</div><div class="zahl klein" id="seit">–</div></div>
+          <div class="kachel"><div class="name">Als CSV gespeichert</div><div class="zahl klein" id="gespeichert-status">–</div></div>
+        </div>
+        <div class="zeile">
+          <button id="csv" class="haupt" disabled>Als CSV speichern</button>
+          <button id="leeren" disabled>Leeren</button>
+        </div>
+        <p class="hinweis">Aufgezeichnet wird jede Messung ab dem Verbinden, auch wenn das Fenster minimiert ist. Die CSV-Datei nutzt Semikolon und Dezimalkomma und öffnet sich so direkt in Excel.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Energie</h2>
+        <div class="kacheln">
+          <div class="kachel p"><div class="name">Abgegebene Energie</div><div class="zahl" id="energie">–</div></div>
+          <div class="kachel i"><div class="name">Abgegebene Ladung</div><div class="zahl" id="ladung">–</div></div>
+          <div class="kachel"><div class="name">Ausgang eingeschaltet</div><div class="zahl" id="zeit-an">–</div></div>
+          <div class="kachel"><div class="name">Zeit in CV / CC</div><div class="zahl klein" id="zeit-modus">–</div></div>
+        </div>
+        <p class="hinweis">Aufsummiert aus Leistung und Strom über die Zeit; Lücken über 10 s (z. B. Verbindung weg) zählen nicht mit.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Kennwerte der ganzen Aufzeichnung</h2>
+        <table class="kennwerte">
+          <thead><tr><th></th><th>Min</th><th>Max</th><th>Mittel</th></tr></thead>
+          <tbody id="kennwerte"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="panel tabelle-panel">
+      <h2>Messpunkte <span class="rechts"><label class="klein"><input type="checkbox" id="folgen" checked> Neueste anzeigen</label></span></h2>
+      <div class="raster tabelle-kopf">
+        <div>Nr.</div><div>Zeit</div><div>Spannung</div><div>Strom</div><div>Leistung</div><div>Modus</div><div>Ausgang</div><div>Multimeter</div>
+      </div>
+      <div class="tabelle" id="tabelle"><div id="tabelle-hoehe"></div><div id="tabelle-zeilen"></div></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="portwahl">
+  <h3>COM-Port wählen</h3>
+  <p class="hinweis">Das SPM6103 meldet sich meist als „USB-SERIAL CH340“. Die OWON-Software muss dafür geschlossen sein.</p>
+  <div id="portliste"></div>
+  <div class="zeile" style="justify-content:flex-end">
+    <button id="port-abbrechen" type="button">Abbrechen</button>
+    <button id="port-ok" type="button" class="haupt" disabled>Verbinden</button>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+
+/* ---------- Hilfen ---------- */
+
+const $ = id => document.getElementById(id);
+const pause = ms => new Promise(r => setTimeout(r, ms));
+const zahl = (x, stellen) => Number.isFinite(x)
+  ? x.toLocaleString('de-DE', { minimumFractionDigits: stellen, maximumFractionDigits: stellen, useGrouping: false })
+  : '–';
+const escapeHtml = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const uhrzeit = t => new Date(t).toLocaleTimeString('de-DE');
+
+// Messfunktionen des Multimeters, Befehle wie in der OWON-Programmieranleitung (SPM Series, S. 11-17)
+const FUNKTIONEN = {
+  'VOLT:DC': { name: 'Gleichspannung', knopf: 'V DC', einheit: 'V', befehl: 'FUNC:VOLT:DC',
+    bereiche: [['0.2', '200 mV'], ['2', '2 V'], ['20', '20 V'], ['200', '200 V'], ['1000', '1000 V']],
+    bereich: 'VOLT:DC:RANG', auto: 'VOLT:DC:RANG:AUTO', rel: 'VOLT:DC:RANG:NULL' },
+  'VOLT:AC': { name: 'Wechselspannung', knopf: 'V AC', einheit: 'V', befehl: 'FUNC:VOLT:AC',
+    bereiche: [['0.2', '200 mV'], ['2', '2 V'], ['20', '20 V'], ['200', '200 V'], ['750', '750 V']],
+    bereich: 'VOLT:AC:RANG', auto: 'VOLT:AC:RANG:AUTO', rel: 'VOLT:AC:RANG:NULL' },
+  'CURR:DC': { name: 'Gleichstrom', knopf: 'A DC', einheit: 'A', befehl: 'FUNC:CURR:DC',
+    bereiche: [['0.2', '200 mA'], ['10', '10 A']], bereich: 'CURR:DC:RANG', rel: 'CURR:DC:RANG:NULL' },
+  'CURR:AC': { name: 'Wechselstrom', knopf: 'A AC', einheit: 'A', befehl: 'FUNC:CURR:AC',
+    bereiche: [['0.2', '200 mA'], ['10', '10 A']], bereich: 'CURR:AC:RANG', rel: 'CURR:AC:RANG:NULL' },
+  'RES': { name: 'Widerstand', knopf: 'Ω', einheit: 'Ω', befehl: 'FUNC:RES',
+    bereiche: [['200', '200 Ω'], ['2E3', '2 kΩ'], ['20E3', '20 kΩ'], ['200E3', '200 kΩ'], ['2E6', '2 MΩ'], ['20E6', '20 MΩ'], ['100E6', '100 MΩ']],
+    bereich: 'RES:RANG', auto: 'RES:RANG:AUTO', rel: 'RES:RANG:NULL' },
+  'CAP': { name: 'Kapazität', knopf: 'C', einheit: 'F', befehl: 'FUNC:CAP', rel: 'CAP:NULL' },
+  'DIOD': { name: 'Diode', knopf: 'Diode', einheit: 'V', befehl: 'FUNC:DIOD' },
+  'CONT': { name: 'Durchgang', knopf: 'Durchgang', einheit: 'Ω', befehl: 'FUNC:CONT' },
+};
+
+const VORSATZ = { p: 1e-12, n: 1e-9, u: 1e-6, 'µ': 1e-6, 'μ': 1e-6, m: 1e-3, k: 1e3, K: 1e3, M: 1e6, G: 1e9 };
+
+// "+0.0011V", "+000.26Ohm", "+1.234kOhm", "+000.00mA" -> { si, zahl, vorsatz, einheit }
+function wertMitEinheit(text) {
+  const t = text.trim().replace(/\s+/g, '');
+  const m = t.match(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)([a-zA-ZΩµμ]*)$/);
+  if (!m) return null;
+  let einheit = m[2], vorsatz = '';
+  if (einheit.length > 1 && VORSATZ[einheit[0]] !== undefined && /^(V|A|F|Ohm|Ω|Hz)$/i.test(einheit.slice(1))) {
+    vorsatz = einheit[0]; einheit = einheit.slice(1);
+  }
+  if (/^ohm$/i.test(einheit)) einheit = 'Ω';
+  const z = parseFloat(m[1]);
+  return { si: z * (vorsatz ? VORSATZ[vorsatz] : 1), zahl: m[1], vorsatz: vorsatz === 'u' ? 'µ' : vorsatz, einheit };
+}
+
+// SI-Wert mit passendem Vorsatz für die Anzeige
+function technisch(x, einheit) {
+  if (!Number.isFinite(x)) return { zahl: '–', einheit };
+  const a = Math.abs(x);
+  const stufen = [[1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'µ'], [1e-9, 'n'], [1e-12, 'p']];
+  let [f, v] = [1, ''];
+  if (a > 0) for (const [s, n] of stufen) { if (a >= s * 0.9999) { f = s; v = n; break; } [f, v] = [s, n]; }
+  const w = x / f;
+  const stellen = Math.abs(w) >= 100 ? 2 : Math.abs(w) >= 10 ? 3 : 4;
+  return { zahl: zahl(w, stellen), einheit: v + einheit };
+}
+
+/* ---------- Serielle Verbindung (Web Serial) ---------- */
+
+class SerielleVerbindung {
+  constructor(port) {
+    this.port = port; this.puffer = ''; this.warter = null; this.kette = Promise.resolve();
+    this.geschlossen = false; this.nachTimeout = false;
+  }
+
+  async oeffnen(baud) {
+    this.baud = baud;
+    await this.port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
+    this.schreiber = this.port.writable.getWriter();
+    this.lesen = this.leseSchleife();
+  }
+
+  async leseSchleife() {
+    const dekoder = new TextDecoder();
+    while (this.port.readable && !this.geschlossen) {
+      this.leser = this.port.readable.getReader();
+      try {
+        for (;;) {
+          const { value, done } = await this.leser.read();
+          if (done) break;
+          this.puffer += dekoder.decode(value, { stream: true });
+          let n;
+          while ((n = this.puffer.search(/[\r\n]/)) >= 0) {
+            const zeile = this.puffer.slice(0, n).trim();
+            this.puffer = this.puffer.slice(n + 1);
+            if (zeile) this.zeileErhalten(zeile);
+          }
+        }
+      } catch (e) {
+        if (!this.geschlossen) console.warn('Lesefehler', e);   // z. B. Rahmenfehler: weiterlesen
+      } finally {
+        this.leser.releaseLock();
+      }
+    }
+  }
+
+  zeileErhalten(zeile) {
+    if (this.warter) {
+      const w = this.warter; this.warter = null; clearTimeout(w.uhr); w.erfuellen(zeile);
+    } else {
+      this.beiUnerwartet?.(zeile);
+    }
+  }
+
+  // Alles läuft nacheinander, damit Antworten nicht durcheinandergeraten
+  exklusiv(fn) {
+    const p = this.kette.then(fn, fn);
+    this.kette = p.catch(() => {});
+    return p;
+  }
+
+  async senden(befehl) {
+    if (this.geschlossen) throw new Error('Verbindung geschlossen');
+    await this.schreiber.write(new TextEncoder().encode(befehl + '\n'));
+  }
+
+  frage(befehl, wartezeit = 800) {
+    return this.exklusiv(async () => {
+      if (this.nachTimeout) { await pause(200); this.nachTimeout = false; }   // späte Antwort abfließen lassen
+      this.puffer = '';
+      const antwort = new Promise((erfuellen, ablehnen) => {
+        this.warter = { erfuellen, uhr: setTimeout(() => {
+          this.warter = null; this.nachTimeout = true;
+          ablehnen(new Error('Keine Antwort auf ' + befehl));
+        }, wartezeit) };
+      });
+      await this.senden(befehl);
+      return antwort;
+    });
+  }
+
+  befehl(befehl) {
+    return this.exklusiv(async () => { await this.senden(befehl); await pause(60); });
+  }
+
+  async schliessen() {
+    this.geschlossen = true;
+    try { await this.leser?.cancel(); } catch {}
+    try { await this.lesen; } catch {}
+    try { this.schreiber?.releaseLock(); } catch {}
+    try { await this.port.close(); } catch {}
+  }
+}
+
+/* ---------- Demo-Gerät: beantwortet dieselben Befehle ohne Hardware ---------- */
+
+class DemoGeraet {
+  constructor() {
+    this.ausgang = false; this.uSoll = 12; this.iSoll = 1.5; this.ovp = 61; this.ocp = 10.5;
+    this.funktion = 'VOLT:DC'; this.auto = true; this.hold = false; this.rel = false; this.relWert = 0;
+    this.start = performance.now(); this.letzterDmm = null;
+  }
+  last() { const t = (performance.now() - this.start) / 1000; return 9 + 4 * Math.sin(t / 7) + 0.3 * Math.sin(t * 1.3); }
+  rauschen(a) { return (Math.random() - 0.5) * 2 * a; }
+  psu() {
+    if (!this.ausgang) return { u: Math.abs(this.rauschen(0.002)), i: 0, modus: 0 };
+    const r = this.last();
+    if (this.uSoll / r > this.iSoll) return { u: this.iSoll * r + this.rauschen(0.004), i: this.iSoll + this.rauschen(0.001), modus: 2 };
+    return { u: this.uSoll + this.rauschen(0.003), i: this.uSoll / r + this.rauschen(0.001), modus: 1 };
+  }
+  dmmSi() {
+    const t = (performance.now() - this.start) / 1000;
+    return {
+      'VOLT:DC': 4.987 + 0.02 * Math.sin(t / 5) + this.rauschen(0.0004),
+      'VOLT:AC': 230.4 + 1.5 * Math.sin(t / 9) + this.rauschen(0.05),
+      'CURR:DC': 0.0472 + 0.004 * Math.sin(t / 4) + this.rauschen(0.00005),
+      'CURR:AC': 0.312 + this.rauschen(0.002),
+      'RES': 4698 + this.rauschen(0.6),
+      'CAP': 1.003e-6 + this.rauschen(2e-9),
+      'DIOD': 0.5821 + this.rauschen(0.0003),
+      'CONT': 0.21 + this.rauschen(0.02),
+    }[this.funktion];
+  }
+  dmmText() {
+    let x = this.hold && this.letzterDmm !== null ? this.letzterDmm : this.dmmSi();
+    this.letzterDmm = x;
+    if (this.rel) x -= this.relWert;
+    const f = this.funktion;
+    const einheit = { V: 'V', A: 'A', 'Ω': 'Ohm', F: 'F' }[FUNKTIONEN[f].einheit];
+    const a = Math.abs(x);
+    let vors = '', fak = 1;
+    if (einheit === 'Ohm') { if (a >= 1e6) [vors, fak] = ['M', 1e6]; else if (a >= 1e3) [vors, fak] = ['k', 1e3]; }
+    else if (einheit === 'F') { if (a < 1e-6) [vors, fak] = ['n', 1e-9]; else if (a < 1e-3) [vors, fak] = ['u', 1e-6]; else [vors, fak] = ['m', 1e-3]; }
+    else if (a < 0.2) [vors, fak] = ['m', 1e-3];
+    const w = x / fak;
+    const st = Math.abs(w) >= 100 ? 2 : Math.abs(w) >= 10 ? 3 : 4;
+    const zahl = (w < 0 ? '-' : '+') + Math.abs(w).toFixed(st);
+    const bereich = { 'VOLT:DC': '20V', 'VOLT:AC': '750V', 'CURR:DC': '200mA', 'CURR:AC': '10A', 'RES': '20KOhm', 'CAP': '2uF', 'DIOD': '2V', 'CONT': '200Ohm' }[f];
+    return { text: zahl + vors + einheit, bereich, si: x };
+  }
+  antwort(b) {
+    b = b.trim().toUpperCase().replace(/^:/, '').replace(/^SENS(E)?:/, '');
+    let m;
+    if (b === '*IDN?') return 'OWON,SPM6103,DEMO0001,FV:V1.0.0';
+    if (b === 'MEAS:ALL:INFO?') { const s = this.psu(); return `${s.u.toFixed(3)} ${s.i.toFixed(3)} ${(s.u * s.i).toFixed(3)} 0 0 0 ${s.modus}`; }
+    if (b === 'MEAS:ALL?') { const s = this.psu(); return `${s.u.toFixed(3)} ${s.i.toFixed(3)} ${(s.u * s.i).toFixed(3)}`; }
+    if (b === 'MEAS:VOLT?') return this.psu().u.toFixed(3);
+    if (b === 'MEAS:CURR?') return this.psu().i.toFixed(3);
+    if (b === 'OUTP?') return this.ausgang ? '1' : '0';
+    if (b === 'VOLT?') return this.uSoll.toFixed(3);
+    if (b === 'CURR?') return this.iSoll.toFixed(3);
+    if (b === 'VOLT:LIM?') return this.ovp.toFixed(3);
+    if (b === 'CURR:LIM?') return this.ocp.toFixed(3);
+    if (b === 'MULT:HOLD?') return this.hold ? '1' : '0';
+    if (b === 'CONF:ALL?') { const d = this.dmmText(); return `${this.funktion},${d.text},${this.auto ? 'AUTO' : 'Manual'},${d.bereich}`; }
+    if (b === 'CONF?') { const d = this.dmmText(); return `${this.funktion} ${d.si >= 0 ? '+' : ''}${d.si.toExponential(4).toUpperCase()}`; }
+    if ((m = b.match(/^OUTP (ON|OFF|1|0)$/))) { this.ausgang = m[1] === 'ON' || m[1] === '1'; return null; }
+    if ((m = b.match(/^VOLT ([\d.]+)$/))) { this.uSoll = +m[1]; return null; }
+    if ((m = b.match(/^CURR ([\d.]+)$/))) { this.iSoll = +m[1]; return null; }
+    if ((m = b.match(/^VOLT:LIM ([\d.]+)$/))) { this.ovp = +m[1]; return null; }
+    if ((m = b.match(/^CURR:LIM ([\d.]+)$/))) { this.ocp = +m[1]; return null; }
+    if ((m = b.match(/^FUNC:(VOLT:DC|VOLT:AC|CURR:DC|CURR:AC|RES|CAP|DIOD|CONT)$/))) { this.funktion = m[1]; this.rel = false; this.letzterDmm = null; return null; }
+    if ((m = b.match(/^MULT:HOLD (ON|OFF)$/))) { this.hold = m[1] === 'ON'; return null; }
+    if ((m = b.match(/:NULL (ON|OFF)$/))) { this.rel = m[1] === 'ON'; this.relWert = this.rel ? this.dmmSi() : 0; return null; }
+    if ((m = b.match(/:RANG:AUTO (ON|OFF)$/))) { this.auto = m[1] === 'ON'; return null; }
+    if (/:RANG \S+$/.test(b)) { this.auto = false; return null; }
+    if (b === 'SYST:LOC' || b === 'SYST:REM' || b === '*RST') return null;
+    return undefined;   // unbekannt: keine Antwort, wie ein echtes Gerät
+  }
+  async frage(b, wartezeit = 800) {
+    await pause(8 + Math.random() * 6);
+    const a = this.antwort(b);
+    if (typeof a !== 'string') { await pause(wartezeit); throw new Error('Keine Antwort auf ' + b); }
+    return a;
+  }
+  async befehl(b) { await pause(5); this.antwort(b); }
+  async schliessen() {}
+}
+
+/* ---------- Zustand ---------- */
+
+const zustand = {
+  geraet: null, demo: false, laeuft: false, faehig: { psu: null, dmm: null },
+  daten: [], letzter: null, funktion: null, dmmAuto: null, dmmBereich: null,
+  hold: false, rel: false, ausgang: null, angehalten: null, hoverT: null, fehlerFolge: 0, gespeichert: 0,
+};
+
+/* ---------- Konsole ---------- */
+
+function log(text, art = 'info') {
+  const el = $('konsole-log');
+  const unten = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+  const zeile = document.createElement('div');
+  zeile.className = art;
+  const vor = { aus: '» ', ein: '« ', err: '! ', info: '· ' }[art];
+  zeile.textContent = `${new Date().toLocaleTimeString('de-DE')} ${vor}${text}`;
+  el.appendChild(zeile);
+  while (el.childElementCount > 500) el.firstChild.remove();
+  if (unten) el.scrollTop = el.scrollHeight;
+}
+
+async function frage(befehl, wartezeit) {
+  const g = zustand.geraet;
+  const mitschreiben = $('alles-loggen').checked;
+  if (mitschreiben) log(befehl, 'aus');
+  const a = await g.frage(befehl, wartezeit);
+  if (mitschreiben) log(a, 'ein');
+  return a;
+}
+
+async function befehl(b) {
+  log(b, 'aus');
+  try { await zustand.geraet.befehl(b); }
+  catch (e) { log(e.message, 'err'); }
+}
+
+function meldung(text) {
+  const el = $('meldung');
+  el.textContent = text || '';
+  el.classList.toggle('sichtbar', !!text);
+}
+
+/* ---------- Verbinden ---------- */
+
+function statusSetzen(art, text, idn = '') {
+  $('status').className = art;
+  $('status-text').textContent = text;
+  $('idn').textContent = idn;
+}
+
+function bedienungFreigeben(an) {
+  for (const id of ['ausgang', 'bereich', 'hold', 'rel', 'konsole-eingabe', 'konsole-senden'])
+    $(id).disabled = !an;
+  document.querySelectorAll('[data-setze], #funktionen button').forEach(b => b.disabled = !an);
+  $('verbinden').textContent = an ? 'Trennen' : 'Verbinden';
+  $('verbinden').classList.toggle('haupt', !an);
+  $('demo').disabled = an;
+  $('baud').disabled = an;
+}
+
+async function verbinden() {
+  meldung('');
+  if (!('serial' in navigator)) {
+    meldung('Serielle Schnittstellen sind nicht verfügbar.');
+    return;
+  }
+  let port;
+  try {
+    port = await navigator.serial.requestPort();
+  } catch {
+    return;   // Auswahl abgebrochen
+  }
+  const wahl = $('baud').value;
+  const raten = wahl === 'auto' ? [115200, 9600, 19200, 38400, 57600] : [+wahl];
+  statusSetzen('', 'Verbinde …');
+  for (const baud of raten) {
+    const v = new SerielleVerbindung(port);
+    try {
+      await v.oeffnen(baud);
+    } catch (e) {
+      statusSetzen('fehler', 'Port lässt sich nicht öffnen');
+      meldung('Der Port lässt sich nicht öffnen: ' + e.message + ' – ist er noch in einem anderen Programm (z. B. der OWON-Software) geöffnet?');
+      return;
+    }
+    v.beiUnerwartet = z => log(z, 'ein');
+    try {
+      const idn = await v.frage('*IDN?', 1200);
+      log(`Verbunden mit ${baud} Baud`, 'info');
+      log(idn, 'ein');
+      zustand.geraet = v; zustand.demo = false;
+      statusSetzen('verbunden', `Verbunden · ${baud} Baud`, idn);
+      await nachVerbinden();
+      return;
+    } catch {
+      log(`Keine Antwort mit ${baud} Baud`, 'err');
+      await v.schliessen();
+    }
+  }
+  statusSetzen('fehler', 'Keine Antwort vom Gerät');
+  meldung('Das Gerät antwortet nicht auf *IDN?. Prüfen: richtiger COM-Port gewählt? Am Netzteil unter Utility die Schnittstelle auf USB bzw. die passende Baudrate gestellt? USB-Treiber (CH340) installiert?');
+}
+
+function demoStarten() {
+  meldung('');
+  zustand.geraet = new DemoGeraet(); zustand.demo = true;
+  statusSetzen('demo', 'Demo-Modus · kein echtes Gerät', 'OWON,SPM6103,DEMO0001,FV:V1.0.0');
+  log('Demo-Modus gestartet', 'info');
+  nachVerbinden();
+}
+
+async function nachVerbinden() {
+  bedienungFreigeben(true);
+  zustand.fehlerFolge = 0;
+  // Welche Abfragen versteht das Gerät? Erst die ergiebigste, dann die einfacheren
+  zustand.faehig.psu = null;
+  for (const [art, b, mindest] of [['info', 'MEAS:ALL:INFO?', 7], ['alle', 'MEAS:ALL?', 3], ['einzeln', 'MEAS:VOLT?', 1]]) {
+    try { if (zahlenAus(await frage(b)).length >= mindest) { zustand.faehig.psu = art; break; } } catch {}
+  }
+  zustand.faehig.dmm = null;
+  for (const [art, b] of [['alle', 'CONF:ALL?'], ['kurz', 'CONF?']]) {
+    try { if (dmmLesen(await frage(b), art)) { zustand.faehig.dmm = art; break; } } catch {}
+  }
+  log(`Netzteil-Abfrage: ${zustand.faehig.psu ?? 'keine'} · Multimeter-Abfrage: ${zustand.faehig.dmm ?? 'keine'}`, 'info');
+  if (!zustand.faehig.psu && !zustand.faehig.dmm) meldung('Das Gerät antwortet auf *IDN?, aber nicht auf die Messabfragen. In der SCPI-Konsole lässt sich das von Hand untersuchen.');
+  await sollwerteLesen().catch(() => {});
+  try { zustand.hold = /^(1|ON)$/i.test(await frage('MULT:HOLD?')); } catch {}
+  knoepfeAktualisieren();
+  zustand.laeuft = true;
+  messSchleife();
+}
+
+async function trennen(grund) {
+  zustand.laeuft = false;
+  const g = zustand.geraet;
+  zustand.geraet = null;
+  if (g && !zustand.demo && !grund) { try { await g.befehl('SYST:LOC'); } catch {} }
+  if (g) await g.schliessen();
+  bedienungFreigeben(false);
+  statusSetzen(grund ? 'fehler' : '', grund || 'Nicht verbunden');
+  log(grund || 'Getrennt', grund ? 'err' : 'info');
+  $('rate').textContent = '';
+}
+
+/* ---------- Messen ---------- */
+
+function zahlenAus(text) {
+  return text.trim().split(/[\s,;]+/).map(x => /^ON$/i.test(x) ? 1 : /^OFF$/i.test(x) ? 0 : Number(x)).filter(Number.isFinite);
+}
+
+async function netzteilLesen(rec) {
+  const art = zustand.faehig.psu;
+  if (art === 'info' || art === 'alle') {
+    const a = zahlenAus(await frage(art === 'info' ? 'MEAS:ALL:INFO?' : 'MEAS:ALL?'));
+    if (a.length < 3) throw new Error('Unerwartete Antwort auf MEAS:ALL');
+    [rec.u, rec.i, rec.p] = a;
+    if (a.length >= 7) [rec.ovp, rec.ocp, rec.otp, rec.modus] = a.slice(3, 7);
+  } else if (art === 'einzeln') {
+    rec.u = zahlenAus(await frage('MEAS:VOLT?'))[0];
+    rec.i = zahlenAus(await frage('MEAS:CURR?'))[0];
+    rec.p = rec.u * rec.i;
+  }
+}
+
+// Wertet eine Multimeter-Antwort aus und legt sie im Zustand ab; liefert false bei Unverständlichem
+function dmmLesen(text, art, rec) {
+  let funktion, wert, anzeige, einheit, auto = null, bereich = null;
+  if (art === 'alle') {           // VOLT:DC,+0.0011V,AUTO,2V
+    const teile = text.split(',').map(s => s.trim());
+    if (teile.length < 2 || !/^[A-Z]{3,4}(:[A-Z]{2})?$/i.test(teile[0])) return false;
+    funktion = teile[0].toUpperCase();
+    const w = wertMitEinheit(teile[1]);
+    if (w) {
+      wert = w.si;
+      anzeige = w.zahl.replace(/^\+/, '').replace('.', ',');
+      einheit = w.vorsatz + (w.einheit || FUNKTIONEN[funktion]?.einheit || '');
+    } else {
+      wert = NaN; anzeige = teile[1].replace(/[a-zA-ZΩ]+$/, '') || 'OL'; einheit = '';
+    }
+    if (teile[2]) auto = /^AUTO$/i.test(teile[2]);
+    if (teile[3]) bereich = teile[3].replace(/ohm/i, 'Ω').replace(/K(?=Ω)/, 'k').replace(/u(?=[AVF])/, 'µ');
+  } else {                         // VOLT:DC +4.0000E-04
+    const m = text.trim().match(/^([A-Z]{3,4}(?::[A-Z]{2})?)[\s,]+(\S+)/i);
+    if (!m) return false;
+    funktion = m[1].toUpperCase();
+    wert = parseFloat(m[2]);
+    const t = technisch(wert, FUNKTIONEN[funktion]?.einheit || '');
+    anzeige = Number.isFinite(wert) && Math.abs(wert) < 1e30 ? t.zahl : 'OL';
+    einheit = t.einheit;
+    if (Math.abs(wert) >= 1e30) wert = NaN;
+  }
+  zustand.funktion = funktion;
+  zustand.dmmAnzeige = { anzeige, einheit };
+  zustand.dmmAuto = auto; zustand.dmmBereich = bereich;
+  if (rec) { rec.dmm = wert; rec.dmmFunktion = funktion; rec.dmmText = anzeige + ' ' + einheit; }
+  return true;
+}
+
+async function sollwerteLesen() {
+  const lies = async b => zahlenAus(await frage(b))[0];
+  zustand.soll = {
+    volt: await lies('VOLT?'), curr: await lies('CURR?'),
+    ovp: await lies('VOLT:LIM?').catch(() => NaN), ocp: await lies('CURR:LIM?').catch(() => NaN),
+  };
+  zustand.ausgang = zahlenAus(await frage('OUTP?'))[0] === 1;
+}
+
+async function messSchleife() {
+  let zyklus = 0, zaehler = 0, rateStart = performance.now();
+  while (zustand.laeuft && zustand.geraet) {
+    const start = performance.now();
+    const rec = { t: Date.now() };
+    let fehler = null;
+    if (zustand.faehig.psu) { try { await netzteilLesen(rec); } catch (e) { fehler = e; } }
+    if (zustand.faehig.dmm) {
+      try {
+        const art = zustand.faehig.dmm;
+        if (!dmmLesen(await frage(art === 'alle' ? 'CONF:ALL?' : 'CONF?'), art, rec)) fehler = new Error('Unerwartete Multimeter-Antwort');
+      } catch (e) { fehler = e; }
+    }
+    if (zyklus % 6 === 5) { try { await sollwerteLesen(); } catch (e) { fehler = e; } }
+    if (!zustand.laeuft) break;
+
+    if (rec.u !== undefined || rec.dmm !== undefined) {
+      rec.ausgang = zustand.ausgang;
+      aufnehmen(rec);
+      zustand.letzter = rec;
+      zaehler++;
+    }
+    if (fehler) {
+      zustand.fehlerFolge++;
+      if (zustand.fehlerFolge === 1 || zustand.fehlerFolge % 20 === 0) log(fehler.message, 'err');
+      if (zustand.fehlerFolge >= 25 && !zustand.demo) { await trennen('Gerät antwortet nicht mehr – Verbindung getrennt'); break; }
+    } else {
+      zustand.fehlerFolge = 0;
+    }
+    anzeigeAktualisieren();
+    const jetzt = performance.now();
+    if (jetzt - rateStart >= 2000) {
+      $('rate').textContent = `${zahl(zaehler * 1000 / (jetzt - rateStart), 1)} Messungen/s`;
+      zaehler = 0; rateStart = jetzt;
+    }
+    zyklus++;
+    const rest = +$('intervall').value - (performance.now() - start);
+    await pause(Math.max(rest, 5));
+  }
+}
+
+/* ---------- Anzeige ---------- */
+
+function anzeigeAktualisieren() {
+  const r = zustand.letzter;
+  if (r && r.u !== undefined) {
+    $('u').textContent = zahl(r.u, 3);
+    $('i').textContent = zahl(r.i, 3);
+    $('p').textContent = zahl(r.p, Math.abs(r.p) >= 100 ? 2 : 3);
+    const modus = $('m-modus');
+    const mt = { 0: ['Standby', ''], 1: ['CV', 'cv'], 2: ['CC', 'cc'], 3: ['Fehler', 'fehler'] }[r.modus];
+    modus.textContent = mt ? mt[0] : '–';
+    modus.className = 'marke ' + (mt ? mt[1] : 'aus');
+    for (const k of ['ovp', 'ocp', 'otp']) $('m-' + k).className = 'marke ' + (r[k] ? 'fehler' : 'aus');
+  }
+  const s = zustand.soll;
+  if (s) {
+    $('s-volt').textContent = zahl(s.volt, 3) + ' V';
+    $('s-curr').textContent = zahl(s.curr, 3) + ' A';
+    $('s-ovp').textContent = zahl(s.ovp, 2) + ' V';
+    $('s-ocp').textContent = zahl(s.ocp, 2) + ' A';
+  }
+  const a = $('ausgang');
+  a.textContent = zustand.ausgang === null ? 'Ausgang –' : zustand.ausgang ? 'Ausgang EIN' : 'Ausgang AUS';
+  a.classList.toggle('an', zustand.ausgang === true);
+
+  const f = FUNKTIONEN[zustand.funktion];
+  if (zustand.dmmAnzeige) {
+    $('dmm').textContent = zustand.dmmAnzeige.anzeige;
+    $('dmm-einheit').textContent = zustand.dmmAnzeige.einheit;
+    $('dmm-funktion').textContent = f ? f.name : zustand.funktion;
+    $('dmm-bereich').textContent = [zustand.dmmAuto === true ? 'Auto' : zustand.dmmAuto === false ? 'Manuell' : '', zustand.dmmBereich]
+      .filter(Boolean).join(' · ') + (zustand.hold ? ' · HOLD' : '') + (zustand.rel ? ' · REL' : '');
+  }
+  knoepfeAktualisieren();
+  aufzeichnungAnzeigen();
+  zeichnenAnfordern();
+}
+
+/* ---------- Aufzeichnung: Kennwerte, Energie, Tabelle ---------- */
+
+const neueStatistik = () => ({ werte: {}, energie: 0, ladung: 0, zeitAn: 0, zeitCV: 0, zeitCC: 0, vorher: null });
+zustand.statistik = neueStatistik();
+
+function kennwertAufnehmen(schluessel, v) {
+  if (!Number.isFinite(v)) return;
+  const s = zustand.statistik.werte[schluessel] ??= { min: v, max: v, summe: 0, n: 0 };
+  if (v < s.min) s.min = v;
+  if (v > s.max) s.max = v;
+  s.summe += v; s.n++;
+}
+
+// Jede Messung landet hier: Liste, Kennwerte und die aufsummierte Energie wachsen mit
+function aufnehmen(rec) {
+  zustand.daten.push(rec);
+  const st = zustand.statistik;
+  kennwertAufnehmen('u', rec.u); kennwertAufnehmen('i', rec.i); kennwertAufnehmen('p', rec.p);
+  if (rec.dmmFunktion) kennwertAufnehmen('dmm:' + rec.dmmFunktion, rec.dmm);
+  if (!Number.isFinite(rec.u)) return;
+  const v = st.vorher;
+  if (v) {
+    const dt = (rec.t - v.t) / 1000;
+    if (dt > 0 && dt <= 10) {   // Trapezregel; größere Lücken (Verbindung weg) zählen nicht
+      if (Number.isFinite(rec.p) && Number.isFinite(v.p)) st.energie += (rec.p + v.p) / 2 * dt;
+      if (Number.isFinite(rec.i) && Number.isFinite(v.i)) st.ladung += (rec.i + v.i) / 2 * dt;
+      if (v.ausgang) st.zeitAn += dt;
+      if (v.modus === 1) st.zeitCV += dt; else if (v.modus === 2) st.zeitCC += dt;
+    }
+  }
+  st.vorher = rec;
+}
+
+function dauerText(s) {
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sek = s % 60;
+  const p = n => String(n).padStart(2, '0');
+  return h ? `${h} h ${p(m)} min` : m ? `${m} min ${p(sek)} s` : `${sek} s`;
+}
+
+const zeitMitMs = t => uhrzeit(t) + ',' + String(new Date(t).getMilliseconds()).padStart(3, '0');
+const tabAktiv = id => $(id).classList.contains('aktiv');
+
+function aufzeichnungAnzeigen() {
+  const d = zustand.daten, n = d.length, st = zustand.statistik;
+  $('tab-zaehler').textContent = n ? n.toLocaleString('de-DE') : '';
+  $('csv').disabled = $('leeren').disabled = !n;
+  if (!tabAktiv('seite-aufz')) return;
+
+  $('anzahl').textContent = n.toLocaleString('de-DE');
+  $('seit').textContent = n ? new Date(d[0].t).toLocaleDateString('de-DE') + ' ' + uhrzeit(d[0].t) : '–';
+  $('dauer').textContent = n ? dauerText((d[n - 1].t - d[0].t) / 1000) : '–';
+  $('gespeichert-status').textContent = !n ? '–' : zustand.gespeichert >= n ? 'ja, vollständig'
+    : zustand.gespeichert ? `bis Punkt ${zustand.gespeichert.toLocaleString('de-DE')}` : 'noch nicht';
+
+  const mitEinheit = (x, e) => { const t = technisch(x, e); return t.zahl + ' ' + t.einheit; };
+  const psu = st.werte.u !== undefined;
+  $('energie').textContent = psu ? mitEinheit(st.energie / 3600, 'Wh') : '–';
+  $('ladung').textContent = psu ? mitEinheit(st.ladung / 3600, 'Ah') : '–';
+  $('zeit-an').textContent = psu ? dauerText(st.zeitAn) : '–';
+  $('zeit-modus').textContent = psu ? `${dauerText(st.zeitCV)} / ${dauerText(st.zeitCC)}` : '–';
+
+  const zeilen = [['u', 'Spannung', 'V', '--u'], ['i', 'Strom', 'A', '--i'], ['p', 'Leistung', 'W', '--p']];
+  for (const s of Object.keys(st.werte).filter(s => s.startsWith('dmm:'))) {
+    const f = s.slice(4);
+    zeilen.push([s, 'Multimeter · ' + (FUNKTIONEN[f]?.name ?? f), FUNKTIONEN[f]?.einheit ?? '', '--d']);
+  }
+  $('kennwerte').innerHTML = zeilen.map(([s, name, e, farbe]) => {
+    const w = st.werte[s];
+    const fmt = x => w ? escapeHtml(s.startsWith('dmm:') ? mitEinheit(x, e) : zahl(x, 3) + ' ' + e) : '–';
+    return `<tr><td style="color:var(${farbe})">${escapeHtml(name)}</td><td>${fmt(w?.min)}</td><td>${fmt(w?.max)}</td><td>${fmt(w ? w.summe / w.n : NaN)}</td></tr>`;
+  }).join('');
+
+  tabelleZeichnen();
+}
+
+// Nur die sichtbaren Zeilen bauen - die Aufzeichnung kann Hunderttausende Punkte lang werden
+const ZEILE = 26;
+function tabelleZeichnen() {
+  const box = $('tabelle'), d = zustand.daten, n = d.length, ziel = $('tabelle-zeilen');
+  $('tabelle-hoehe').style.height = (n * ZEILE) + 'px';
+  if ($('folgen').checked) box.scrollTop = box.scrollHeight;
+  if (!n) {
+    ziel.style.top = '0';
+    ziel.innerHTML = '<div class="tabelle-leer">Noch keine Messpunkte – „Verbinden“ oder „Demo“ startet die Aufzeichnung.</div>';
+    return;
+  }
+  const erste = Math.max(0, Math.floor(box.scrollTop / ZEILE) - 2);
+  const letzte = Math.min(n, erste + Math.ceil(box.clientHeight / ZEILE) + 5);
+  const modi = { 0: 'Standby', 1: 'CV', 2: 'CC', 3: 'Fehler' };
+  const leer = '<span class="gedimmt">–</span>';
+  let html = '';
+  for (let j = erste; j < letzte; j++) {
+    const r = d[j];
+    const f = FUNKTIONEN[r.dmmFunktion];
+    html += `<div class="raster tz${j % 2 ? ' g' : ''}"><div class="gedimmt">${(j + 1).toLocaleString('de-DE')}</div><div>${zeitMitMs(r.t)}</div>`
+      + `<div class="u">${Number.isFinite(r.u) ? zahl(r.u, 3) + ' V' : leer}</div>`
+      + `<div class="i">${Number.isFinite(r.i) ? zahl(r.i, 3) + ' A' : leer}</div>`
+      + `<div class="p">${Number.isFinite(r.p) ? zahl(r.p, 3) + ' W' : leer}</div>`
+      + `<div>${modi[r.modus] ?? leer}</div><div>${r.ausgang === true ? 'EIN' : r.ausgang === false ? 'AUS' : leer}</div>`
+      + `<div class="d">${r.dmmText ? escapeHtml((f ? f.knopf + '  ' : '') + r.dmmText) : leer}</div></div>`;
+  }
+  ziel.style.top = (erste * ZEILE) + 'px';
+  ziel.innerHTML = html;
+}
+
+$('tabelle').addEventListener('scroll', () => {
+  const box = $('tabelle');
+  $('folgen').checked = box.scrollTop + box.clientHeight >= box.scrollHeight - ZEILE;
+  tabelleZeichnen();
+});
+$('folgen').addEventListener('change', tabelleZeichnen);
+
+/* ---------- Tabs ---------- */
+
+function tabZeigen(id) {
+  document.querySelectorAll('.tab').forEach(t => {
+    const an = t.dataset.seite === id;
+    t.classList.toggle('aktiv', an);
+    t.setAttribute('aria-selected', an);
+  });
+  document.querySelectorAll('.seite').forEach(s => s.classList.toggle('aktiv', s.id === id));
+  if (id === 'seite-aufz') aufzeichnungAnzeigen(); else zeichnenAnfordern();
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => tabZeigen(t.dataset.seite)));
+// Strg+1 / Strg+2 wechseln die Tabs
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey && !e.altKey && (e.key === '1' || e.key === '2')) { tabZeigen(e.key === '1' ? 'seite-live' : 'seite-aufz'); e.preventDefault(); }
+});
+
+function knoepfeAktualisieren() {
+  document.querySelectorAll('#funktionen button').forEach(b => b.classList.toggle('aktiv', b.dataset.f === zustand.funktion));
+  $('hold').classList.toggle('aktiv', zustand.hold);
+  $('rel').classList.toggle('aktiv', zustand.rel);
+  const f = FUNKTIONEN[zustand.funktion];
+  $('rel').disabled = !zustand.geraet || !f?.rel;
+  const sel = $('bereich');
+  const schluessel = (zustand.funktion || '') + '|' + !!f?.bereiche;
+  if (sel.dataset.fuer !== schluessel) {
+    sel.dataset.fuer = schluessel;
+    sel.innerHTML = '';
+    if (f?.auto) sel.add(new Option('Automatisch', 'auto'));
+    for (const [w, n] of f?.bereiche || []) sel.add(new Option(n, w));
+    if (!sel.options.length) sel.add(new Option(zustand.dmmBereich || '–', ''));
+  }
+  sel.disabled = !zustand.geraet || !f?.bereiche;
+  if (document.activeElement !== sel && f?.bereiche) {
+    if (zustand.dmmAuto && f.auto) sel.value = 'auto';
+    else if (zustand.dmmBereich) {
+      const passend = f.bereiche.find(([, n]) => n.replace(/\s/g, '').toLowerCase() === zustand.dmmBereich.replace(/\s/g, '').toLowerCase());
+      if (passend) sel.value = passend[0];
+    }
+  }
+}
+
+/* ---------- Diagramme ---------- */
+
+const KURVEN = [
+  { schluessel: 'u', titel: 'Spannung', einheit: 'V', farbe: '--u', stellen: 3 },
+  { schluessel: 'i', titel: 'Strom', einheit: 'A', farbe: '--i', stellen: 3 },
+  { schluessel: 'p', titel: 'Leistung', einheit: 'W', farbe: '--p', stellen: 3 },
+  { schluessel: 'dmm', titel: 'Multimeter', einheit: '', farbe: '--d', stellen: 4 },
+];
+
+for (const k of KURVEN) {
+  const box = document.createElement('div');
+  box.className = 'diagramm';
+  box.innerHTML = `<div class="kopf"><span class="titel" style="color:var(${k.farbe})">${k.titel}</span>
+    <span>Min <span class="stat" data-s="min">–</span></span><span>Max <span class="stat" data-s="max">–</span></span>
+    <span>Mittel <span class="stat" data-s="mit">–</span></span><span class="hover"></span></div><canvas></canvas>`;
+  $('diagramme').appendChild(box);
+  k.box = box; k.canvas = box.querySelector('canvas');
+  k.canvas.addEventListener('mousemove', e => {
+    const r = k.canvas.getBoundingClientRect();
+    const b = zustand.bereichT;
+    if (!b) return;
+    const x = e.clientX - r.left - RAND_L;
+    const breite = r.width - RAND_L - RAND_R;
+    zustand.hoverT = b[0] + (b[1] - b[0]) * Math.min(Math.max(x / breite, 0), 1);
+    zeichnenAnfordern();
+  });
+  k.canvas.addEventListener('mouseleave', () => { zustand.hoverT = null; zeichnenAnfordern(); });
+}
+
+const RAND_L = 62, RAND_R = 10, RAND_O = 8, RAND_U = 18;
+let zeichnenGeplant = false;
+function zeichnenAnfordern() {
+  if (zeichnenGeplant) return;
+  zeichnenGeplant = true;
+  requestAnimationFrame(() => { zeichnenGeplant = false; zeichnen(); });
+}
+
+function farbe(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function ersterIndexAb(daten, t) {
+  let lo = 0, hi = daten.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (daten[mid].t < t) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+function schoeneSchritte(min, max, anzahl) {
+  const roh = (max - min) / anzahl;
+  const zehner = Math.pow(10, Math.floor(Math.log10(roh)));
+  const schritt = [1, 2, 2.5, 5, 10].map(f => f * zehner).find(s => s >= roh) || roh;
+  const werte = [];
+  for (let v = Math.ceil(min / schritt) * schritt; v <= max + schritt * 1e-9; v += schritt)
+    werte.push(Math.abs(v) < schritt * 1e-6 ? 0 : v);   // keine „-0“ an der Achse
+  return { werte, schritt };
+}
+
+function zeichnen() {
+  const daten = zustand.daten;
+  const fenster = +$('fenster').value * 1000;
+  const ende = zustand.angehalten ?? (daten.length ? Math.max(Date.now(), daten[daten.length - 1].t) : Date.now());
+  const anfang = fenster ? ende - fenster : (daten.length ? daten[0].t : ende - 60000);
+  zustand.bereichT = [anfang, Math.max(ende, anfang + 1000)];
+  const [t0, t1] = zustand.bereichT;
+  const i0 = Math.max(ersterIndexAb(daten, t0) - 1, 0);
+  const i1 = ersterIndexAb(daten, t1 + 1);
+  const textFarbe = farbe('--muted'), linienFarbe = farbe('--line');
+  const dpr = window.devicePixelRatio || 1;
+  const hoverRec = zustand.hoverT !== null && daten.length ? naechster(zustand.hoverT) : null;
+
+  for (const k of KURVEN) {
+    const c = k.canvas;
+    if (!c.clientWidth) continue;   // Tab „Aufzeichnung“ offen - nichts zu zeichnen
+    const w = c.clientWidth, h = c.clientHeight;
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    const iw = w - RAND_L - RAND_R, ih = h - RAND_O - RAND_U;
+
+    // Multimeter: nur Punkte der aktuellen Messfunktion, Einheit aus der Funktion
+    const funk = k.schluessel === 'dmm' ? zustand.funktion : null;
+    const einheit = k.schluessel === 'dmm' ? (FUNKTIONEN[funk]?.einheit || '') : k.einheit;
+    const gilt = r => Number.isFinite(r[k.schluessel]) && (!funk || r.dmmFunktion === funk);
+
+    let min = Infinity, max = -Infinity, summe = 0, n = 0;
+    for (let j = i0; j < i1; j++) {
+      const r = daten[j];
+      if (!gilt(r) || r.t < t0) continue;
+      const v = r[k.schluessel];
+      if (v < min) min = v; if (v > max) max = v; summe += v; n++;
+    }
+    const fmt = v => {
+      if (k.schluessel !== 'dmm') return zahl(v, k.stellen) + ' ' + einheit;
+      const t = technisch(v, einheit); return t.zahl + ' ' + t.einheit;
+    };
+    const stat = s => k.box.querySelector(`[data-s="${s}"]`);
+    stat('min').textContent = n ? fmt(min) : '–';
+    stat('max').textContent = n ? fmt(max) : '–';
+    stat('mit').textContent = n ? fmt(summe / n) : '–';
+    k.box.querySelector('.titel').textContent = k.schluessel === 'dmm' && FUNKTIONEN[funk] ? `Multimeter · ${FUNKTIONEN[funk].name}` : k.titel;
+    k.box.querySelector('.hover').textContent = hoverRec && gilt(hoverRec)
+      ? `${uhrzeit(hoverRec.t)}  ${fmt(hoverRec[k.schluessel])}` : '';
+
+    // Wertebereich mit etwas Luft; flache Kurven bekommen eine Mindesthöhe
+    if (!n) { min = 0; max = 1; }
+    let spanne = max - min;
+    const mindest = Math.max(Math.abs(max), Math.abs(min)) * 0.002 || (k.schluessel === 'dmm' ? 1e-9 : 0.01);
+    if (spanne < mindest) { const m = (max + min) / 2; min = m - mindest / 2; max = m + mindest / 2; spanne = mindest; }
+    min -= spanne * 0.08; max += spanne * 0.08;
+    const y = v => RAND_O + ih - (v - min) / (max - min) * ih;
+    const x = t => RAND_L + (t - t0) / (t1 - t0) * iw;
+
+    // Raster und Achsen
+    g.font = '11px ' + farbe('--mono');
+    g.strokeStyle = linienFarbe; g.fillStyle = textFarbe; g.lineWidth = 1;
+    g.textAlign = 'right'; g.textBaseline = 'middle';
+    // Achsbeschriftung: ein Vorsatz für die ganze Achse, Nachkommastellen nach Rasterweite
+    const raster = schoeneSchritte(min, max, 4);
+    const achse = k.schluessel === 'dmm' ? technisch(Math.max(Math.abs(min), Math.abs(max)), einheit) : { einheit };
+    const fak = achse.einheit.length > einheit.length ? VORSATZ[achse.einheit[0]] : 1;
+    const achsStellen = Math.max(0, -Math.floor(Math.log10(raster.schritt / fak) + 1e-9));
+    for (const v of raster.werte) {
+      const yy = Math.round(y(v)) + 0.5;
+      g.beginPath(); g.moveTo(RAND_L, yy); g.lineTo(RAND_L + iw, yy); g.stroke();
+      g.fillText(zahl(v / fak, achsStellen) + ' ' + achse.einheit, RAND_L - 6, yy);
+    }
+    g.textAlign = 'center'; g.textBaseline = 'top';
+    const zs = schoeneZeitSchritte(t1 - t0);
+    for (let t = Math.ceil(t0 / zs) * zs; t <= t1; t += zs) {
+      const xx = Math.round(x(t)) + 0.5;
+      g.beginPath(); g.moveTo(xx, RAND_O); g.lineTo(xx, RAND_O + ih); g.stroke();
+      g.fillText(uhrzeit(t), xx, RAND_O + ih + 4);
+    }
+
+    // Kurve: bei vielen Punkten Min/Max je Pixelspalte, damit Spitzen sichtbar bleiben
+    g.save();
+    g.beginPath(); g.rect(RAND_L, RAND_O, iw, ih); g.clip();
+    g.strokeStyle = farbe(k.farbe); g.lineWidth = 1.5; g.lineJoin = 'round';
+    g.beginPath();
+    let offen = false, spalte = null, sMin = 0, sMax = 0, sLetzt = 0;
+    const spalteZeichnen = () => {
+      if (spalte === null) return;
+      if (!offen) { g.moveTo(spalte, y(sMin)); offen = true; } else g.lineTo(spalte, y(sMin));
+      if (sMax !== sMin) g.lineTo(spalte, y(sMax));
+      g.lineTo(spalte, y(sLetzt));
+    };
+    const verdichten = (i1 - i0) > iw * 2;
+    for (let j = i0; j < i1; j++) {
+      const r = daten[j];
+      if (!gilt(r)) { spalteZeichnen(); spalte = null; offen = false; continue; }
+      const v = r[k.schluessel];
+      if (!verdichten) {
+        if (!offen) { g.moveTo(x(r.t), y(v)); offen = true; } else g.lineTo(x(r.t), y(v));
+        continue;
+      }
+      const px = Math.round(x(r.t));
+      if (px !== spalte) { spalteZeichnen(); spalte = px; sMin = sMax = sLetzt = v; }
+      else { if (v < sMin) sMin = v; if (v > sMax) sMax = v; sLetzt = v; }
+    }
+    spalteZeichnen();
+    g.stroke();
+    if (hoverRec) {
+      const xx = Math.round(x(hoverRec.t)) + 0.5;
+      g.strokeStyle = textFarbe; g.lineWidth = 1; g.setLineDash([3, 3]);
+      g.beginPath(); g.moveTo(xx, RAND_O); g.lineTo(xx, RAND_O + ih); g.stroke();
+      g.setLineDash([]);
+      if (gilt(hoverRec)) { g.fillStyle = farbe(k.farbe); g.beginPath(); g.arc(x(hoverRec.t), y(hoverRec[k.schluessel]), 3.5, 0, Math.PI * 2); g.fill(); }
+    }
+    g.restore();
+  }
+}
+
+function naechster(t) {
+  const d = zustand.daten;
+  const j = ersterIndexAb(d, t);
+  if (j <= 0) return d[0];
+  if (j >= d.length) return d[d.length - 1];
+  return (t - d[j - 1].t) < (d[j].t - t) ? d[j - 1] : d[j];
+}
+
+function schoeneZeitSchritte(spanne) {
+  const ziel = spanne / 6;
+  return [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200].map(s => s * 1000).find(s => s >= ziel) || 3600000;
+}
+
+/* ---------- CSV ---------- */
+
+async function csvSpeichern() {
+  const z = v => Number.isFinite(v) ? String(v).replace('.', ',') : '';
+  const modi = { 0: 'Standby', 1: 'CV', 2: 'CC', 3: 'Fehler' };
+  const t0 = zustand.daten[0]?.t ?? 0;
+  const zeilen = ['Zeit;Sekunden;Spannung [V];Strom [A];Leistung [W];Modus;Ausgang;OVP;OCP;OTP;Multimeter-Funktion;Multimeter-Wert (SI);Multimeter-Anzeige'];
+  for (const r of zustand.daten) {
+    const d = new Date(r.t);
+    const zeit = d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE') + ',' + String(d.getMilliseconds()).padStart(3, '0');
+    zeilen.push([zeit, z((r.t - t0) / 1000), z(r.u), z(r.i), z(r.p), modi[r.modus] ?? '', r.ausgang === null || r.ausgang === undefined ? '' : r.ausgang ? 'EIN' : 'AUS',
+      r.ovp ?? '', r.ocp ?? '', r.otp ?? '', FUNKTIONEN[r.dmmFunktion]?.name ?? r.dmmFunktion ?? '', z(r.dmm), r.dmmText ?? ''].join(';'));
+  }
+  const inhalt = '﻿' + zeilen.join('\r\n');
+  const anzahl = zustand.daten.length;
+  const s = new Date(t0);
+  const p = n => String(n).padStart(2, '0');
+  const name = `SPM6103_${s.getFullYear()}-${p(s.getMonth() + 1)}-${p(s.getDate())}_${p(s.getHours())}-${p(s.getMinutes())}-${p(s.getSeconds())}.csv`;
+  if (window.spm) {
+    // Programm: Windows-Speicherdialog
+    const pfad = await window.spm.csvSpeichern(name, inhalt);
+    if (!pfad) return;
+    zustand.gespeichert = anzahl; aufzeichnungAnzeigen();
+    log(`${anzahl.toLocaleString('de-DE')} Messpunkte gespeichert: ${pfad}`, 'info');
+    return;
+  }
+  const a = document.createElement('a');
+  a.download = name;
+  a.href = URL.createObjectURL(new Blob([inhalt], { type: 'text/csv;charset=utf-8' }));
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  zustand.gespeichert = anzahl; aufzeichnungAnzeigen();
+}
+
+/* ---------- Bedienung ---------- */
+
+for (const [schluessel, f] of Object.entries(FUNKTIONEN)) {
+  const b = document.createElement('button');
+  b.textContent = f.knopf; b.dataset.f = schluessel; b.title = f.name; b.disabled = true;
+  b.addEventListener('click', async () => {
+    zustand.rel = false;
+    await befehl(f.befehl);
+    if (f.auto) await befehl(f.auto + ' ON');
+  });
+  $('funktionen').appendChild(b);
+}
+
+$('verbinden').addEventListener('click', () => zustand.geraet ? trennen() : verbinden());
+$('demo').addEventListener('click', demoStarten);
+
+$('ausgang').addEventListener('click', async () => {
+  const neu = !zustand.ausgang;
+  await befehl('OUTP ' + (neu ? 'ON' : 'OFF'));
+  try { zustand.ausgang = zahlenAus(await frage('OUTP?'))[0] === 1; } catch { zustand.ausgang = neu; }
+  anzeigeAktualisieren();
+});
+
+document.querySelectorAll('[data-setze]').forEach(knopf => {
+  const feld = $(knopf.dataset.feld);
+  const setzen = async () => {
+    const roh = feld.value.trim().replace(',', '.');
+    const v = Number(roh);
+    if (!roh || !Number.isFinite(v) || v < 0 || v > +knopf.dataset.max) {
+      feld.style.borderColor = 'var(--err)';
+      setTimeout(() => feld.style.borderColor = '', 1200);
+      return;
+    }
+    await befehl(`${knopf.dataset.setze} ${v}`);
+    feld.value = '';
+    await sollwerteLesen().catch(() => {});
+    anzeigeAktualisieren();
+  };
+  knopf.addEventListener('click', setzen);
+  feld.addEventListener('keydown', e => { if (e.key === 'Enter') setzen(); });
+});
+
+$('bereich').addEventListener('change', async e => {
+  const f = FUNKTIONEN[zustand.funktion];
+  if (!f) return;
+  if (e.target.value === 'auto') await befehl(f.auto + ' ON');
+  else { if (f.auto) await befehl(f.auto + ' OFF'); await befehl(`${f.bereich} ${e.target.value}`); }
+  e.target.blur();
+});
+
+$('hold').addEventListener('click', async () => {
+  zustand.hold = !zustand.hold;
+  await befehl('MULT:HOLD ' + (zustand.hold ? 'ON' : 'OFF'));
+  anzeigeAktualisieren();
+});
+
+$('rel').addEventListener('click', async () => {
+  const f = FUNKTIONEN[zustand.funktion];
+  if (!f?.rel) return;
+  zustand.rel = !zustand.rel;
+  await befehl(f.rel + ' ' + (zustand.rel ? 'ON' : 'OFF'));
+  anzeigeAktualisieren();
+});
+
+$('anhalten').addEventListener('click', () => {
+  zustand.angehalten = zustand.angehalten ? null : Date.now();
+  $('anhalten').textContent = zustand.angehalten ? 'Weiter' : 'Anhalten';
+  $('anhalten').classList.toggle('aktiv', !!zustand.angehalten);
+  zeichnenAnfordern();
+});
+$('fenster').addEventListener('change', zeichnenAnfordern);
+
+$('csv').addEventListener('click', csvSpeichern);
+$('leeren').addEventListener('click', () => {
+  if (!confirm(`${zustand.daten.length.toLocaleString('de-DE')} Messpunkte verwerfen?`)) return;
+  zustand.daten = []; zustand.letzter = null; zustand.gespeichert = 0; zustand.statistik = neueStatistik();
+  anzeigeAktualisieren();
+});
+
+const konsoleSenden = async () => {
+  const feld = $('konsole-eingabe');
+  const b = feld.value.trim();
+  if (!b || !zustand.geraet) return;
+  feld.value = '';
+  if (b.includes('?')) {
+    log(b, 'aus');
+    try { log(await zustand.geraet.frage(b, 1500), 'ein'); } catch (e) { log(e.message, 'err'); }
+  } else {
+    await befehl(b);
+  }
+};
+$('konsole-senden').addEventListener('click', konsoleSenden);
+$('konsole-eingabe').addEventListener('keydown', e => { if (e.key === 'Enter') konsoleSenden(); });
+
+if ('serial' in navigator) {
+  navigator.serial.addEventListener('disconnect', e => {
+    if (zustand.geraet && !zustand.demo && zustand.geraet.port === e.target) trennen('USB-Verbindung getrennt');
+  });
+} else {
+  meldung('Serielle Schnittstellen sind nicht verfügbar. Der Demo-Modus funktioniert trotzdem.');
+}
+
+/* ---------- Portauswahl (das Programm reicht die COM-Ports herein) ---------- */
+
+const CH340 = 0x1a86;
+const usbId = v => v === undefined || v === null || v === '' ? null : (/^\d+$/.test(String(v)) ? parseInt(v, 10) : parseInt(v, 16));
+
+function portlisteZeigen(ports) {
+  const dlg = $('portwahl');
+  const liste = $('portliste');
+  const vorher = dlg.dataset.gewaehlt;
+  liste.innerHTML = '';
+  // CH340 (Vendor 1A86) zuerst - so meldet sich das Netzteil üblicherweise
+  const sortiert = [...ports].sort((a, b) => (usbId(b.vendorId) === CH340) - (usbId(a.vendorId) === CH340) || String(a.portName).localeCompare(String(b.portName), 'de', { numeric: true }));
+  for (const p of sortiert) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'port';
+    knopf.dataset.id = p.portId;
+    const vid = usbId(p.vendorId), pid = usbId(p.productId);
+    const hex = n => n === null ? '' : n.toString(16).toUpperCase().padStart(4, '0');
+    knopf.innerHTML = `<b></b><span></span><small></small>`;
+    knopf.querySelector('b').textContent = p.portName || '?';
+    knopf.querySelector('span').textContent = p.displayName || 'Serielles Gerät';
+    knopf.querySelector('small').textContent = [vid !== null ? `USB ${hex(vid)}:${hex(pid)}` : '', vid === CH340 ? 'CH340 – vermutlich das Netzteil' : ''].filter(Boolean).join(' · ');
+    knopf.addEventListener('click', () => portMarkieren(p.portId));
+    knopf.addEventListener('dblclick', () => { portMarkieren(p.portId); $('port-ok').click(); });
+    liste.appendChild(knopf);
+  }
+  if (!sortiert.length) {
+    liste.innerHTML = '<p class="leer">Kein COM-Port gefunden. Netzteil per USB anschließen und einschalten – die Liste aktualisiert sich von selbst.</p>';
+  }
+  const bleibt = sortiert.find(p => p.portId === vorher) || (sortiert.length ? sortiert[0] : null);
+  portMarkieren(bleibt ? bleibt.portId : '');
+  if (!dlg.open) { dlg.returnValue = ''; dlg.showModal(); }
+}
+
+function portMarkieren(id) {
+  $('portwahl').dataset.gewaehlt = id;
+  document.querySelectorAll('#portliste .port').forEach(k => k.classList.toggle('aktiv', k.dataset.id === id));
+  $('port-ok').disabled = !id;
+}
+
+if (window.spm) {
+  window.spm.beiPorts(portlisteZeigen);
+  $('port-ok').addEventListener('click', () => $('portwahl').close($('portwahl').dataset.gewaehlt || ''));
+  $('port-abbrechen').addEventListener('click', () => $('portwahl').close(''));
+  // Schließen (auch per Esc) beantwortet die Anfrage des Programms - ohne Wahl heißt das Abbrechen
+  $('portwahl').addEventListener('close', () => window.spm.portWaehlen($('portwahl').returnValue));
+}
+
+/* ---------- Einstellungen merken ---------- */
+
+for (const id of ['baud', 'intervall', 'fenster']) {
+  try {
+    const wert = localStorage.getItem('spm6103.' + id);
+    if (wert !== null && [...$(id).options].some(o => o.value === wert)) $(id).value = wert;
+  } catch {}
+  $(id).addEventListener('change', () => { try { localStorage.setItem('spm6103.' + id, $(id).value); } catch {} });
+}
+
+window.addEventListener('resize', zeichnenAnfordern);
+// Ungespeicherte Messdaten: das Programm fragt vor dem Beenden nach
+window.addEventListener('beforeunload', e => { if (zustand.daten.length > zustand.gespeichert) e.preventDefault(); });
+// Beim Beenden die Tasten am Gerät wieder freigeben
+window.addEventListener('pagehide', () => {
+  if (zustand.geraet && !zustand.demo) zustand.geraet.senden('SYST:LOC').catch(() => {});
+});
+setInterval(() => { if (zustand.geraet && !zustand.angehalten) zeichnenAnfordern(); }, 500);
+log('Bereit. „Verbinden“ wählt den COM-Port des Netzteils, „Demo“ zeigt alles ohne Gerät.', 'info');
+zeichnen();
+</script>
+</body>
+</html>

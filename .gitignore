@@ -1,0 +1,7 @@
+# Abhaengigkeiten und Bauergebnisse
+programm/node_modules/
+programm/dist/
+*.exe
+
+# OWONs Programmieranleitung - nicht weiterverteilen
+*.pdf

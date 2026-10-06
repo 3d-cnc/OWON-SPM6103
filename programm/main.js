@@ -18,7 +18,7 @@
  * mit Fehlercode, wenn die Seite Fehler gemeldet hat.
  */
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, net, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, screen, shell } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -63,7 +63,8 @@ function jsonSchreiben(name, wert) {
 
 const gueltig = (wert, [min, max]) => Number.isInteger(wert) && wert >= min && wert <= max;
 
-let einstellungen = { breite: BREITE, hoehe: HOEHE, updatesBeimStart: true };
+let einstellungen = { breite: BREITE, hoehe: HOEHE, updatesBeimStart: true, thema: 'dunkel' };
+const HINTERGRUND = { dunkel: '#0e1115', hell: '#eef1f5' };
 
 function einstellungenLesen() {
     const e = jsonLesen('einstellungen.json');
@@ -71,7 +72,9 @@ function einstellungenLesen() {
         breite: gueltig(e.breite, GRENZEN.breite) ? e.breite : BREITE,
         hoehe: gueltig(e.hoehe, GRENZEN.hoehe) ? e.hoehe : HOEHE,
         updatesBeimStart: e.updatesBeimStart !== false,
+        thema: e.thema === 'hell' ? 'hell' : 'dunkel',
     };
+    nativeTheme.themeSource = einstellungen.thema === 'hell' ? 'light' : 'dark';
 }
 
 function lageLesen() {
@@ -110,7 +113,7 @@ function fensterOeffnen() {
         show: false,
         title: 'OWON SPM6103',
         icon: path.join(__dirname, 'build', 'icon.png'),
-        backgroundColor: '#0e1115',
+        backgroundColor: HINTERGRUND[einstellungen.thema],
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -257,7 +260,18 @@ ipcMain.handle('fenstergroesse', (_e, breite, hoehe) => {
     return { ok: true, breite, hoehe, angewendet: { breite: w, hoehe: h }, verkleinert: w < breite || h < hoehe };
 });
 
-ipcMain.on('beenden', () => fenster?.close());   // fragt nach, wenn Messdaten ungespeichert sind
+ipcMain.on('beenden', () => fenster?.close());
+
+// Hell/Dunkel: Fensterhintergrund und Windows-Dialoge mitziehen, für den nächsten Start merken
+ipcMain.on('thema', (_e, thema) => {
+    thema = thema === 'hell' ? 'hell' : 'dunkel';
+    nativeTheme.themeSource = thema === 'hell' ? 'light' : 'dark';
+    fenster?.setBackgroundColor(HINTERGRUND[thema]);
+    if (einstellungen.thema !== thema) {
+        einstellungen.thema = thema;
+        jsonSchreiben('einstellungen.json', einstellungen);
+    }
+});   // fragt nach, wenn Messdaten ungespeichert sind
 
 /* ------------------------------------------------------------ Zusatzfunktionen: Taskleiste, Dateien */
 
@@ -580,13 +594,35 @@ function pruefenLaufen() {
             zusatz.liveScrollt = await js("document.querySelector('main').scrollHeight > document.querySelector('main').clientHeight + 1");
             fs.writeFileSync(bildName('live2'), (await frischesBild()).toPNG());
 
+            // Hell/Dunkel: Vorgabe dunkel, Knopf schaltet um, Wahl bleibt gespeichert, Strg+Umschalt+L schaltet zurück
+            const thema = { vorgabe: await js('document.documentElement.dataset.thema') };
+            await js("document.getElementById('thema-knopf').click()");
+            await warten(400);
+            Object.assign(thema, await js(`({ jetzt: document.documentElement.dataset.thema, gespeichert: localStorage.getItem('spm6103.thema'),
+                hintergrund: getComputedStyle(document.body).backgroundColor, menue: document.getElementById('menue-thema').textContent })`));
+            thema.programm = jsonLesen('einstellungen.json').thema;
+            fs.writeFileSync(bildName('hell-live'), (await frischesBild()).toPNG());
+            for (const seite of ['seite-auto', 'seite-kennlinie', 'seite-aufz']) {
+                await js(`document.querySelector('.tab[data-seite="${seite}"]').click()`);
+                await warten(500);
+                fs.writeFileSync(bildName('hell-' + seite.replace('seite-', '')), (await frischesBild()).toPNG());
+            }
+            await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click()");
+            await js("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'L', ctrlKey: true, shiftKey: true }))");
+            await warten(400);
+            thema.zurueck = await js('document.documentElement.dataset.thema');
+            thema.hintergrundDunkel = await js('getComputedStyle(document.body).backgroundColor');
+            zusatz.thema = thema;
+
             const z = zusatz;
             const zusatzOk = z.vorlageFragt && z.vorlage.volt === 12 && z.vorlage.curr === 2 && z.vorlage.ovp === 13.1
                 && z.markierung.ereignis && z.markierung.inDaten && z.alarm && z.abschalten
                 && z.ablaufLaeuft && z.ablauf && z.ablaufEnde.volt === 6 && z.ablaufEnde.ausgang === false
                 && z.kennlinie.punkte >= 10 && z.kennlinie.letzterModus === 2 && z.akku.status === 'fertig' && z.akku.mah > 1 && z.akku.ausgang === false
                 && z.bauteile.gut + z.bauteile.schlecht >= 2 && z.laufend.dateien === 1 && z.laufend.zeilen > 50 && z.laufend.markierung && z.laufend.kopf
-                && z.vergleich.reihen === 2 && !z.liveScrollt;
+                && z.vergleich.reihen === 2 && !z.liveScrollt
+                && z.thema.vorgabe === 'dunkel' && z.thema.jetzt === 'hell' && z.thema.gespeichert === 'hell' && z.thema.programm === 'hell'
+                && z.thema.hintergrund === 'rgb(238, 241, 245)' && z.thema.zurueck === 'dunkel' && z.thema.hintergrundDunkel === 'rgb(14, 17, 21)';
 
             // Versionsvergleich
             const faelle = [['1.0.3', '1.0.2', 1], ['1.0.2', '1.0.2', 0], ['v1.10.0', '1.9.9', 1], ['1.0.2', '1.0.10', -1], ['2.0.0-beta', '2.0.0', -1], ['2.0', '2.0.0', 0]];
@@ -630,7 +666,7 @@ function pruefenLaufen() {
                 && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && konsole.sichtbar >= 6 && konsole.luecke <= 12
                 && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt
                 && vergleich.length === 0 && ['aktuell', 'neu', 'unbekannt'].includes(pruefung.symbol) && /^v\d+\.\d+\.\d+$/.test(pruefung.text)
-                && menue.offen && menue.punkte.length === 3 && update.dialog && update.knopf === 'neu' && update.menuePunkt
+                && menue.offen && menue.punkte.length === 4 && update.dialog && update.knopf === 'neu' && update.menuePunkt
                 && groesse.vorher === '1920x1080' && groesse.fenster === '1600 x 900' && !groesse.quer && groesse.gespeichert.breite === 1600
                 && zusatzOk && fehler.length === 0;
             console.log(JSON.stringify({ ok, zusatzOk, zusatz, schnittstelle, portwahl, werte, flaeche, aufz, vergleich, pruefung, menue, update, groesse, fehler, bild: bildDatei }, null, 1));

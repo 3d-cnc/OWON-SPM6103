@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('spm', {
     fenstergroesse: (breite, hoehe) => ipcRenderer.invoke('fenstergroesse', breite, hoehe),
     linkOeffnen: (url) => ipcRenderer.send('link-oeffnen', url),
     beenden: () => ipcRenderer.send('beenden'),
+    thema: (thema) => ipcRenderer.send('thema', thema),
     // Zusatzfunktionen: Taskleiste blinken, laufend speichern, Aufzeichnungen laden
     aufmerksamkeit: () => ipcRenderer.send('aufmerksamkeit'),
     ordnerVorgabe: () => ipcRenderer.invoke('ordner-vorgabe'),

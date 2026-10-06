@@ -29,7 +29,8 @@ die Felder um.
 
 Oben links:
 - Menü (Knopf mit den drei Strichen): Nach Updates suchen, Fenstergröße beim
-  Start (1280 x 720 bis 3840 x 2160 oder eigene), Beenden (Strg+Q)
+  Start (1280 x 720 bis 3840 x 2160 oder eigene), Helles/Dunkles Design,
+  Beenden (Strg+Q)
 - Neben dem Namen die Version mit Symbol, ein Klick öffnet die Versionsprüfung:
     grün ✓  auf dem neuesten Stand
     rot  ↑  Update verfügbar, "Update herunterladen" öffnet die Seite auf GitHub
@@ -106,7 +107,12 @@ Außerdem:
 Beim Trennen und Beenden schickt das Programm SYST:LOC, damit die Tasten am
 Gerät wieder gehen.
 
-Tasten: F11 Vollbild, Strg + / Strg - Zoom, Strg 0 Zoom zurück.
+Design: Oben rechts schaltet der Knopf mit Mond bzw. Sonne zwischen dunkel
+und hell um (auch Strg+Umschalt+L oder im Menü). Vorgabe ist dunkel, die Wahl
+bleibt gespeichert – unabhängig von der Windows-Einstellung.
+
+Tasten: Strg+1 bis Strg+6 Tabs, M Markierung, Strg+Umschalt+L Hell/Dunkel,
+Strg+Q Beenden, F11 Vollbild, Strg + / Strg - Zoom, Strg 0 Zoom zurück.
 
 Befehle
 -------

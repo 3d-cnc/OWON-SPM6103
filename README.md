@@ -8,7 +8,8 @@ Windows-Programm, das Messwerte des Labornetzteils mit Multimeter **OWON SPM6103
 - **Tab „Kennlinie“:** U-I-Kennlinien aufnehmen, etwa von LEDs, Dioden oder Motoren, mehrere Kurven im Vergleich.
 - **Tab „Bauteile“:** Bauteile mit dem Multimeter prüfen (Gut/Schlecht, Zähler, Protokoll).
 - **Tab „Vergleich“:** gespeicherte Aufzeichnungen und die aktuelle übereinanderlegen.
-- **Menü:** Nach Updates suchen, Fenstergröße beim Start (Vorgabe 1920 × 1080) und Beenden.
+- **Menü:** Nach Updates suchen, Fenstergröße beim Start (Vorgabe 1920 × 1080), Hell/Dunkel und Beenden.
+- **Design:** dunkel als Vorgabe, hell per Knopf oben rechts (Mond/Sonne) oder Strg+Umschalt+L; die Wahl bleibt gespeichert.
 - **Versionsprüfung:** Neben dem Namen stehen die Version und ein Symbol. Es ist grün, wenn das Programm aktuell ist, rot, wenn es ein Update gibt, und grau, wenn sich das nicht prüfen lässt. Gefragt wird nach dem neuesten GitHub-Release dieses Repositorys.
 - Ein Demo-Modus funktioniert ohne Gerät.
 
@@ -50,6 +51,7 @@ Der Selbsttest startet das Programm in einem durchsichtigen Fenster im Demo-Modu
 - dass viele Konsolen-Einträge den Verlauf nicht zusammendrücken,
 - den Versionsvergleich, die Versionsprüfung, das Menü und den Update-Hinweis,
 - dass ein Wechsel der Fenstergröße auf 1600 × 900 sofort gilt und gespeichert wird,
+- dass Dunkel die Vorgabe ist und der Wechsel auf Hell wirkt und gespeichert wird (mit Bildern einiger Tabs in Hell),
 - jede Zusatzfunktion einmal echt: Vorlage, Markierung, Alarm mit Abschalten, Abschalten nach Zeit, Ablauf mit Rampe, Kennlinie an der Demo-LED, Ladung des Demo-Akkus bis „voll“, Bauteilprüfung, laufendes Speichern und Laden der Datei im Vergleich.
 
 Dabei speichert er Bilder der Tabs, des Menüs und der Dialoge. Bei einem Fehler endet er mit Exit-Code 1. Er funktioniert auch mit der fertigen .exe.

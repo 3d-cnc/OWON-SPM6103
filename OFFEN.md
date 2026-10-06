@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.2.0 liegt auf `main` und als Release
-[v1.2.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.2.0) (`OWON-SPM6103.exe`, nicht signiert).
+Stand 06.10.2026: Version 1.3.0 liegt auf `main` und als Release
+[v1.3.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.3.0) (`OWON-SPM6103.exe`, nicht signiert).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
@@ -31,6 +31,8 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
   Kennlinie, laufend speichern, Markierungen, Vergleich, Bauteilprüfung). Neue Tabs „Automatik“,
   „Kennlinie“, „Bauteile“, „Vergleich“; der Code der Zusatzfunktionen liegt in `programm/app/js/`.
   Alles nur im Demo-Modus geprüft.
+- 06.10., Version 1.3.0: **Hell/Dunkel** zum Umschalten (Knopf oben rechts, Menü, Strg+Umschalt+L), Vorgabe
+  dunkel, unabhängig von Windows; gespeichert. Damit ist der Teil „Hell/Dunkel“ aus SPM-6 erledigt.
 
 ## Offene Vorschläge
 
@@ -44,7 +46,7 @@ nie neu vergeben. Vergeben sind SPM-1 bis SPM-19, **die nächste ist SPM-20**.
 | SPM-3 | **Update mit einem Klick:** „Update herunterladen“ lädt die neue .exe im Programm herunter (mit Fortschrittsbalken), prüft die Größe, ersetzt nach einer Rückfrage die alte Datei und startet neu. Alternative: eine Installer-Fassung mit electron-updater, die Updates selbst im Hintergrund einspielt. Beides braucht das öffentliche Repo. |
 | SPM-4 | **Update-Hinweis mit Maß:** „Diese Version überspringen“ und „Später erinnern“. Bei Dauermessungen über viele Stunden prüft das Programm höchstens einmal am Tag nach, auch wenn es die ganze Zeit läuft. |
 | SPM-5 | **Oberfläche skalieren** (80–150 %) im Menü, gespeichert. Dann bleibt die 1920 × 1080-Anordnung bei jeder Fenstergröße gleich und wird nur verkleinert oder vergrößert, statt sich umzuordnen – etwa auf einem 4K-Bildschirm oder auf 1600 × 900. Strg + / Strg − gehen schon heute, werden aber nicht gemerkt. |
-| SPM-6 | **Menü erweitern:** Einstellungen (Speicherordner für CSV, Trennzeichen und Dezimalzeichen, Abfragetakt beim Start), Hell/Dunkel umschalten statt nur nach Windows, Hilfe (öffnet LIESMICH), „Über“ mit Lizenz und Links. |
+| SPM-6 | **Menü erweitern:** Einstellungen (Trennzeichen und Dezimalzeichen der CSV, Abfragetakt beim Start), Hilfe (öffnet LIESMICH), „Über“ mit Lizenz und Links. (Hell/Dunkel seit 1.3.0 erledigt, Speicherordner gibt es im laufenden Speichern.) |
 | SPM-7 | **Für die Veröffentlichung vorbereiten:** Lizenz (z. B. MIT), englische Oberfläche mit Sprachwahl im Menü, README auf Englisch mit Bildern, CHANGELOG. Die .exe baut GitHub Actions bei jedem neuen Versions-Tag selbst (passt zu SPM-2). OWONs PDF bleibt draußen. |
 | SPM-8 | **Veröffentlichen in einem Schritt:** `npm run veroeffentlichen` erhöht die Version, baut, führt den Selbsttest aus, setzt den Tag und lädt das Release mit Notizen hoch – weniger Handarbeit und keine vergessene Versionsnummer, auf die sich die Versionsprüfung verlässt. |
 

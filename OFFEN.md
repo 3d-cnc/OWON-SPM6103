@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
-Stand 07.10.2026: Version 1.4.1 liegt auf `main` und als Release
-[v1.4.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.4.1) (`OWON-SPM6103.exe`, nicht signiert).
+Stand 07.10.2026: Version 1.4.2 liegt auf `main` und als Release
+[v1.4.2](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.4.2) (`OWON-SPM6103.exe`, nicht signiert).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
@@ -9,10 +9,13 @@ einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multim
 Antworten haben genau das Format aus OWONs Anleitung – `MEAS:ALL:INFO?` liefert sieben Werte
 (`0.002 0.000 0.000 0 0 0 0`), `CONF:ALL?` z. B. `VOLT:AC,+231.89V,AUTO,750V`.
 
-**Gerätetest am 07.10. (Firmware FV:V2.1.0, COM3, Ausgang aus):** `npx electron . --geraet=COM3` in `programm/`
-bedient das Programm am echten Gerät und sammelt jede Fehlermeldung. Bestätigt: Verbinden, Messen (3,8/s),
-Sollwerte, OVP/OCP, Feinverstellung, Vorlagen, alle 8 Messfunktionen mit allen Bereichen, Hold, Alarm auf den
-Multimeter-Wert, Bauteilprüfung (OL kommt als Text `OL`), Fernanzeige mit echten Werten. Eigenheiten des Geräts:
+**Gerätetest am 07.10. (Firmware FV:V2.1.0, COM3, Ausgang offen):** `npx electron . --geraet=COM3 [--mit-ausgang]`
+in `programm/` bedient das Programm am echten Gerät und sammelt jede Fehlermeldung. Bestätigt, auch mit der
+fertigen .exe 1.4.2: Verbinden, Messen (3,8/s), Sollwerte, OVP/OCP, Feinverstellung, Vorlagen, alle 8
+Messfunktionen mit allen Bereichen, Hold, Alarm auf den Multimeter-Wert, Bauteilprüfung (OL kommt als `OL`),
+Fernanzeige mit echten Werten; mit Ausgang (≤ 2 V / 50 mA, nichts angeschlossen): Ausgang ein/aus, Abschalten nach
+Zeit, Ablaufprogramm mit Rampe, Erst-Einschalten, Zyklentest, Kennlinie, „Ausgang aus“ über die Fernanzeige.
+Eigenheiten des Geräts:
 - Bereiche nur in der Schreibweise der Anleitung (`200E-3`, `2`, `20E3` …); `0.2` oder `2000` werden ignoriert.
 - Ein fester Bereich schaltet von selbst auf „Manual“; ein `…:RANG:AUTO OFF` direkt davor verschluckt den Bereich.
 - Nach Funktions-/Bereichswechsel schaltet das Gerät Relais und antwortet bis ~1 s verzögert; zwei Befehle im
@@ -20,6 +23,13 @@ Multimeter-Wert, Bauteilprüfung (OL kommt als Text `OL`), Fernanzeige mit echte
   300 ms und auf Antworten bis 1,5 s.
 - `OUTP?` und Schutzmeldungen kommen als `ON`/`OFF`, `MEAS:ALL:INFO?` mit Kommas, `MEAS:ALL?` nur mit U und I.
 - `…:RANG:NULL?` und `FUNC:VOLT?` antworten `ERR`; ob Relativ wirkt, lässt sich nur am Display sehen.
+- Direkt nach dem Einschalten meldet `MEAS:ALL:INFO?` ~0,2 s lang Modus 2 (CC), auch ohne Strom. „Strombegrenzung
+  greift“ prüft das Programm deshalb am Strom (≥ 90 % der Grenze), nicht am Modus.
+- Gelegentlich antwortet das Gerät auf `MEAS:ALL:INFO?` mit `ERR` – einzelne Aussetzer stehen grau im Log.
+- Widerstand ohne Bauteil (OL): im Automatikbetrieb springt das Gerät zwischen den Bereichen; ein fester Bereich
+  landet dann manchmal eine Stufe zu hoch. Das Programm liest den Bereich nach 1,5 s zurück und setzt ihn notfalls neu.
+- Einmal blieb ein `OUTP OFF` ohne Wirkung (nicht nachstellbar). Das Programm liest den Ausgang nach jedem Schalten
+  zurück und schickt den Befehl bis zu dreimal.
 
 **Versionsprüfung (seit 1.1.0):** Das Programm fragt `api.github.com/repos/3d-cnc/OWON-SPM6103/releases/latest`.
 Solange das Repo privat ist, antwortet GitHub mit 404, und das Symbol neben der Version bleibt grau
@@ -28,20 +38,15 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 
 ## Liegt bei Marco
 
-- **Am echten Netzteil noch ausprobieren:** Ausgang ein/aus, Sollwerte und OVP/OCP setzen, CV/CC unter
-  Last, die übrigen Multimeter-Funktionen, Messbereich, Hold und Relativ, CSV speichern.
-  Passt etwas nicht: in der SCPI-Konsole „Abfragen mitschreiben“ anhaken und die Ausgabe an Claude geben.
-  Davon hängen Vorlagen, Feinverstellung, Abschalten, Alarme mit Abschalten, Ablaufprogramm, Akku laden,
-  Kennlinie, Erst-Einschalten und Zyklentest ab: sie alle setzen `VOLT`, `CURR`, `VOLT:LIM`, `CURR:LIM` und `OUTP`.
+- **Noch nie mit echter Last geprüft:** CV/CC unter Last, Kennlinie an einer echten LED, Akku laden an einem echten
+  Akku, Alarme und Abschalten bei fließendem Strom. Passt etwas nicht: in der SCPI-Konsole „Abfragen mitschreiben“
+  anhaken und die Ausgabe an Claude geben.
 - **Fernanzeige mit dem echten Handy:** einschalten, Windows-Firewall „Zugriff zulassen“ (private Netzwerke),
   QR-Code scannen. Geprüft ist sie bisher nur auf demselben PC (127.0.0.1).
 - **Entschieden (06.10.):** Die Fernanzeige bleibt bei http; „Nicht sicher“ im Handy-Browser nimmt Marco
   in Kauf (Variante A). Verworfen: selbst erstelltes Zertifikat (große Warnseite statt kleinem Hinweis)
   und echtes Let's-Encrypt-Zertifikat über eine Subdomain von cnc3d.tech (DNS-Eintrag auf die Adresse im
   Heimnetz, Ausnahme gegen DNS-Rebinding in der Fritz!Box, Verlängerung alle 90 Tage, nur für Marco nutzbar).
-- **Gerätetest mit eingeschaltetem Ausgang** (`--geraet=COM3 --mit-ausgang`, höchstens 2 V / 50 mA): Ausgang,
-  Abschalten, Ablauf, Erst-Einschalten, Zyklentest, Kennlinie, „Ausgang aus“ über die Fernanzeige. Wartet auf
-  Marcos Antwort, was am Ausgang hängt. Akku laden nur mit angeschlossenem Akku.
 - **Relativ am Display prüfen:** ob „Relativ“ den Wert am Gerät wirklich auf null setzt.
 
 ## Umgesetzt
@@ -52,6 +57,11 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
   Alles nur im Demo-Modus geprüft.
 - 06.10., Version 1.3.0: **Hell/Dunkel** zum Umschalten (Knopf oben rechts, Menü, Strg+Umschalt+L), Vorgabe
   dunkel, unabhängig von Windows; gespeichert. Damit ist der Teil „Hell/Dunkel“ aus SPM-6 erledigt.
+- 07.10., Version 1.4.2: **Gerätetest mit Ausgang** – Erst-Einschalten und Kennlinie hielten die kurze CC-Meldung
+  nach dem Einschalten für eine Strombegrenzung (jetzt am Strom geprüft); Ausgang wird nach dem Schalten
+  zurückgelesen und notfalls erneut geschaltet; Messbereich wird zurückgelesen und notfalls neu gesetzt, eine neue
+  Wahl beendet die Prüfung der vorigen; einzelne Aussetzer grau, Fehlermeldungen mit der Antwort des Geräts;
+  `MEAS:ALL?` mit nur U und I wird verstanden.
 - 07.10., Version 1.4.1: **Fehler vom echten Gerät behoben** – 200 mV/200 mA ließen sich nicht wählen (`0.2` statt
   `200E-3`), der erste Bereichswechsel aus „Automatisch“ ging verloren, „Keine Antwort auf CONF:ALL?“ nach
   Bereichswechseln; Anzeige ohne führende Nullen („0,000 A“). Neu: Gerätetest `--geraet=COM3`.

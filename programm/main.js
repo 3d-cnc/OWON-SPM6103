@@ -1007,7 +1007,9 @@ function geraetLaufen() {
                 if (await js("!document.getElementById('bereich').disabled")) {
                     for (const [wert, text] of [...optionen.filter(([w]) => w !== 'auto'), ...optionen.filter(([w]) => w === 'auto')]) {
                         await js(`(() => { const s = document.getElementById('bereich'); s.value = '${wert}'; s.dispatchEvent(new Event('change')); })()`);
-                        await warten(2200);
+                        await warten(500);
+                        await bisWahr('!bereichPrueft', 8000);   // wie ein Mensch: erst weiter, wenn die Wahl übernommen ist
+                        await warten(800);
                         const b = await js('({ auto: zustand.dmmAuto, bereich: zustand.dmmBereich, wahl: document.getElementById("bereich").value })');
                         const passt = wert === 'auto' ? b.auto === true : b.auto === false && String(b.bereich).replace(/\s/g, '').toLowerCase() === text.replace(/\s/g, '').toLowerCase();
                         eintrag.bereiche.push({ gewaehlt: text, geraet: `${b.auto ? 'Auto' : 'Manuell'} ${b.bereich}`, passt });

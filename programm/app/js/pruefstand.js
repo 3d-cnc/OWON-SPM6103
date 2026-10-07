@@ -81,7 +81,7 @@ async function eeStarten() {
       balken('ee-balken', anteil * 0.7);
       chipSetzen('erstein', 'Erst-Einschalten', `${zahl(rec.u, 1)} V`);
       eeDiagramm();
-      if (rec.modus === 2 || rec.i >= w.strom * 0.98) { ergebnis = { gut: false, kurz: 'Strombegrenzung', text: `Strombegrenzung ${feldZahl(w.strom)} A erreicht bei ${zahl(rec.u, 2)} V – Kurzschluss oder zu große Last?` }; break; }
+      if (strombegrenzungGreift(rec, w.strom)) { ergebnis = { gut: false, kurz: 'Strombegrenzung', text: `Strombegrenzung ${feldZahl(w.strom)} A erreicht bei ${zahl(rec.u, 2)} V – Kurzschluss oder zu große Last?` }; break; }
       if (rec.i > w.grenze && anteil < 1) { ergebnis = { gut: false, kurz: 'Strom zu früh', text: `Strom ${zahl(rec.i, 3)} A schon bei ${zahl(rec.u, 2)} V – über der Ruhestrom-Grenze ${feldZahl(w.grenze)} A` }; break; }
       if (anteil >= 1) break;
     }
@@ -94,7 +94,7 @@ async function eeStarten() {
         ee.punkte.push({ u: rec.u, i: rec.i });
         balken('ee-balken', 0.7 + 0.3 * (1 - (ende - Date.now()) / (w.halten * 1000)));
         $('ee-ergebnis').textContent = `Ruhestrom messen: ${zahl(rec.i, 3)} A`;
-        if (rec.modus === 2) { ergebnis = { gut: false, kurz: 'Strombegrenzung', text: `Strombegrenzung bei Zielspannung erreicht` }; break; }
+        if (strombegrenzungGreift(rec, w.strom)) { ergebnis = { gut: false, kurz: 'Strombegrenzung', text: `Strombegrenzung bei Zielspannung erreicht` }; break; }
       }
       if (!ergebnis && werte.length) {
         ruhe = werte.reduce((a, x) => a + x, 0) / werte.length;

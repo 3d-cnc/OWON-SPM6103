@@ -144,7 +144,7 @@ async function klMessen() {
       $('kl-info').textContent = `Punkt ${n + 1}/${anzahl}: ${zahl(rec.u, 3)} V, ${zahl(rec.i, 3)} A`;
       chipSetzen('kennlinie', 'Kennlinie', `${n + 1}/${anzahl}`);
       klAlles();
-      if ($('kl-cc').checked && rec.modus === 2) { grund = `Strombegrenzung ${feldZahl(w.strom)} A erreicht bei ${zahl(rec.u, 2)} V`; break; }
+      if ($('kl-cc').checked && strombegrenzungGreift(rec, w.strom)) { grund = `Strombegrenzung ${feldZahl(w.strom)} A erreicht bei ${zahl(rec.u, 2)} V`; break; }
     }
   } catch (e) {
     kl.abbruch = e.message;

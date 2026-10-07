@@ -1164,9 +1164,12 @@ function zahlenAus(text) {
 async function netzteilLesen(rec) {
   const art = zustand.faehig.psu;
   if (art === 'info' || art === 'alle') {
-    const a = zahlenAus(await frage(art === 'info' ? 'MEAS:ALL:INFO?' : 'MEAS:ALL?'));
-    if (a.length < 3) throw new Error('Unerwartete Antwort auf MEAS:ALL');
-    [rec.u, rec.i, rec.p] = a;
+    const befehlText = art === 'info' ? 'MEAS:ALL:INFO?' : 'MEAS:ALL?';
+    const antwort = await frage(befehlText);
+    const a = zahlenAus(antwort);
+    // MEAS:ALL? liefert am SPM6103 nur U und I – die Leistung dann selbst rechnen
+    if (a.length < 2) throw new Error(`Unerwartete Antwort auf ${befehlText}: »${antwort}«`);
+    [rec.u, rec.i, rec.p] = a.length >= 3 ? a : [a[0], a[1], a[0] * a[1]];
     if (a.length >= 7) [rec.ovp, rec.ocp, rec.otp, rec.modus] = a.slice(3, 7);
   } else if (art === 'einzeln') {
     rec.u = zahlenAus(await frage('MEAS:VOLT?'))[0];
@@ -1229,7 +1232,8 @@ async function messSchleife() {
     if (zustand.faehig.dmm) {
       try {
         const art = zustand.faehig.dmm;
-        if (!dmmLesen(await frage(art === 'alle' ? 'CONF:ALL?' : 'CONF?'), art, rec)) fehler = new Error('Unerwartete Multimeter-Antwort');
+        const antwort = await frage(art === 'alle' ? 'CONF:ALL?' : 'CONF?');
+        if (!dmmLesen(antwort, art, rec)) fehler = new Error(`Unerwartete Multimeter-Antwort: »${antwort}«`);
       } catch (e) { fehler = e; }
     }
     if (zyklus % 6 === 5) { try { await sollwerteLesen(); } catch (e) { fehler = e; } }
@@ -1243,7 +1247,9 @@ async function messSchleife() {
     }
     if (fehler) {
       zustand.fehlerFolge++;
-      if (zustand.fehlerFolge === 1 || zustand.fehlerFolge % 20 === 0) log(fehler.message, 'err');
+      // Ein einzelner Aussetzer bei vier Messungen je Sekunde ist harmlos (grau); rot erst, wenn es sich wiederholt
+      if (zustand.fehlerFolge === 1) log('Einzelner Aussetzer: ' + fehler.message, 'info');
+      else if (zustand.fehlerFolge === 2 || zustand.fehlerFolge % 20 === 0) log(fehler.message, 'err');
       if (zustand.fehlerFolge >= 25 && !zustand.demo) { await trennen('Gerät antwortet nicht mehr – Verbindung getrennt'); break; }
     } else {
       zustand.fehlerFolge = 0;
@@ -1738,10 +1744,17 @@ $('verbinden').addEventListener('click', () => zustand.geraet ? trennen() : verb
 $('demo').addEventListener('click', demoStarten);
 
 // Ausgang schalten und den echten Zustand zurücklesen - auch für die Automatiken in js/
+// Bis zu drei Versuche: nach dem Schalten zurücklesen und, wenn das Gerät etwas anderes meldet, erneut schicken.
+// Am echten SPM6103 blieb einmal ein „OUTP OFF“ ohne Wirkung – gerade Ausschalten muss sicher sein.
 async function ausgangSchalten(an, leise = false) {
   if (!zustand.geraet) return;
-  await befehl('OUTP ' + (an ? 'ON' : 'OFF'), leise);
-  try { zustand.ausgang = zahlenAus(await frage('OUTP?'))[0] === 1; } catch { zustand.ausgang = an; }
+  for (let versuch = 1; versuch <= 3; versuch++) {
+    await befehl('OUTP ' + (an ? 'ON' : 'OFF'), leise && versuch === 1);
+    await pause(150);
+    try { zustand.ausgang = zahlenAus(await frage('OUTP?'))[0] === 1; } catch { zustand.ausgang = null; }
+    if (zustand.ausgang === an) break;
+    log(`Ausgang ${an ? 'EIN' : 'AUS'}: das Gerät meldet ${zustand.ausgang === null ? 'nichts' : zustand.ausgang ? 'EIN' : 'AUS'}` + (versuch < 3 ? ' – noch einmal' : ' – bitte am Gerät prüfen!'), versuch < 3 ? 'info' : 'err');
+  }
   anzeigeAktualisieren();
 }
 $('ausgang').addEventListener('click', () => ausgangSchalten(!zustand.ausgang));
@@ -1765,13 +1778,31 @@ document.querySelectorAll('[data-setze]').forEach(knopf => {
   feld.addEventListener('keydown', e => { if (e.key === 'Enter') setzen(); });
 });
 
+// Nummer der letzten Bereichswahl: eine neue Wahl beendet die Nachprüfung der vorigen
+let bereichWahl = 0, bereichPrueft = false;
 $('bereich').addEventListener('change', async e => {
   const f = FUNKTIONEN[zustand.funktion];
   if (!f) return;
+  const nr = ++bereichWahl;
   // Ein fester Bereich schaltet das Gerät von selbst auf „Manual“ – ein „AUTO OFF“ vorweg verschluckt es den Bereich
-  if (e.target.value === 'auto') await befehl(f.auto + ' ON');
-  else await befehl(`${f.bereich} ${e.target.value}`);
+  const wahl = e.target.value, text = e.target.selectedOptions[0]?.text ?? '';
   e.target.blur();
+  if (wahl === 'auto') { await befehl(f.auto + ' ON'); return; }
+  // Zurücklesen und notfalls noch einmal schicken: Ohne Bauteil („OL“) springt das Gerät im Automatikbetrieb
+  // ständig zwischen den Bereichen und landet dann manchmal eine Stufe zu hoch (am SPM6103 gesehen)
+  const gleich = b => String(b ?? '').replace(/\s/g, '').toLowerCase() === text.replace(/\s/g, '').toLowerCase();
+  bereichPrueft = true;
+  try {
+    for (let versuch = 1; versuch <= 2; versuch++) {
+      await befehl(`${f.bereich} ${wahl}`);
+      // erst nach 1,5 s nachsehen – so lange braucht das Gerät, bis es den neuen Bereich meldet
+      try { await messungAb(Date.now() + 1500, 5000); } catch { return; }
+      if (nr !== bereichWahl || gleich(zustand.dmmBereich)) return;
+      log(`Messbereich ${text}: das Gerät steht auf ${zustand.dmmBereich}` + (versuch === 1 ? ' – noch einmal' : (Number.isFinite(zustand.letzter?.dmm) ? '' : ' (ohne angeschlossenes Bauteil springt das Gerät zwischen den Bereichen)')), versuch === 1 ? 'info' : 'err');
+    }
+  } finally {
+    if (nr === bereichWahl) bereichPrueft = false;
+  }
 });
 
 $('hold').addEventListener('click', async () => {

@@ -148,6 +148,10 @@ function messungAb(ab, zeitlimit = 6000) {
 }
 const warten = ms => new Promise(r => setTimeout(r, ms));
 
+// Greift die Strombegrenzung wirklich? Das SPM6103 meldet direkt nach dem Einschalten ~0,2 s lang „CC“,
+// auch ohne jeden Strom (am Gerät gemessen) – deshalb zählt nur, ob der Strom tatsächlich an der Grenze liegt.
+const strombegrenzungGreift = (rec, grenze) => Number.isFinite(rec.i) && rec.i >= grenze * 0.9;
+
 /* ---------- Automatiken: immer nur eine zur Zeit, Anzeige im Tab Live ---------- */
 
 const automatik = { name: null, stoppen: null };

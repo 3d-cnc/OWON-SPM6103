@@ -3,10 +3,10 @@ OWON SPM6103 - Live-Anzeige
 
 Starten
 -------
-Doppelklick auf "OWON SPM6103.exe". Nichts zu installieren, die Datei läuft
-für sich allein und kann auch auf einen anderen Rechner oder USB-Stick kopiert
-werden. Der Start dauert ein paar Sekunden, weil sich das Programm dabei erst
-entpackt.
+Doppelklick auf die .exe, z. B. "OWON-SPM6103-V1.0.1.exe" (die Versionsnummer
+steht im Namen). Nichts zu installieren, die Datei läuft für sich allein und
+kann auch auf einen anderen Rechner oder USB-Stick kopiert werden. Der Start
+dauert ein paar Sekunden, weil sich das Programm dabei erst entpackt.
 
 Beim allerersten Start kann Windows SmartScreen warnen ("Der Computer wurde
 durch Windows geschützt"), weil die Datei nicht von einem bekannten Herausgeber
@@ -175,5 +175,6 @@ Im Ordner "programm" (Electron). Neu bauen dort mit:
     npm install
     node node_modules/electron/install.js
     npm run bauen
-Danach liegt die neue "OWON SPM6103.exe" wieder hier oben.
+Danach liegt die neue .exe hier oben, mit der Version im Namen
+(z. B. "OWON-SPM6103-V1.0.1.exe").
 Selbsttest ohne Gerät und ohne sichtbares Fenster:  npm run pruefen

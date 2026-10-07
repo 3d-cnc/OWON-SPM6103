@@ -127,6 +127,7 @@ main { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; }
 #seite-aufz { grid-template-columns: 460px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .aufz-links { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto; }
 .kacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.aufz-knoepfe { margin-bottom: 10px; }
 .kachel { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 .kachel .name { color: var(--muted); font-size: 12px; }
 .kachel .zahl { font-family: var(--mono); font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -350,7 +351,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
     <div class="aufz-links">
       <section class="panel">
         <h2>Aufzeichnung <span class="rechts"><span class="status-pille" id="aufz-status">aus</span></span></h2>
-        <div class="zeile">
+        <div class="zeile aufz-knoepfe">
           <button id="aufz-start" class="haupt" disabled>Starten</button>
           <button id="aufz-stopp" disabled>Beenden</button>
         </div>

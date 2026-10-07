@@ -14,7 +14,7 @@
     "scripts": {
         "start": "electron .",
         "pruefen": "electron . --pruefen",
-        "bauen": "electron-builder --win portable --publish never && node -e \"require('fs').renameSync('dist/OWON SPM6103.exe', '../OWON SPM6103.exe')\""
+        "bauen": "electron-builder --win portable --publish never && node -e \"require('fs').renameSync('dist/OWON SPM6103.exe', '../OWON-SPM6103-V' + require('./package.json').version + '.exe')\""
     },
     "devDependencies": {
         "electron": "44.5.1",

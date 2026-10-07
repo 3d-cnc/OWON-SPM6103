@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
 Stand 07.10.2026: Version 1.0.1 liegt auf `main` und als Release
-[v1.0.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.1) (`OWON-SPM6103.exe`, nicht signiert).
+[v1.0.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.1) (`OWON-SPM6103-V1.0.1.exe`, nicht signiert; seit 07.10. steht die Version im Dateinamen).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 

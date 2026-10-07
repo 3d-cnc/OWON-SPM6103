@@ -40,7 +40,7 @@ node node_modules/electron/install.js
 npm run bauen
 ```
 
-`npm run bauen` legt `OWON SPM6103.exe` in den obersten Ordner. Die .exe selbst ist nicht im Repository.
+`npm run bauen` legt die .exe mit der Version im Namen in den obersten Ordner, z. B. `OWON-SPM6103-V1.0.1.exe`. Die .exe selbst ist nicht im Repository.
 
 ## Selbsttest
 

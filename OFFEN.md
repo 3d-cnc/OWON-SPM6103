@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
-Stand 07.10.2026: Version 1.4.2 liegt auf `main` und als Release
-[v1.4.2](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.4.2) (`OWON-SPM6103.exe`, nicht signiert).
+Stand 07.10.2026: Version 1.0.0 liegt auf `main` und als Release
+[v1.0.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.0) (`OWON-SPM6103.exe`, nicht signiert).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
@@ -51,6 +51,9 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 
 ## Umgesetzt
 
+- 07.10.: **Neue Zählung** (Marco): alle bisherigen Releases und Tags (v1.0.0 bis v1.4.2) auf GitHub gelöscht,
+  der Stand von 1.4.2 heißt jetzt **1.0.0**. Die Versionsnummern in den Einträgen darunter sind die alte Zählung.
+  Dazu fünf Hinweistexte aus der Oberfläche entfernt (Laufend speichern, Aufzeichnung, Energie, Abschalten, Alarme).
 - 06.10., Version 1.2.0: **SPM-10 bis SPM-19** (Vorlagen, Abschalten, Alarme, Ablaufprogramm, Akku laden,
   Kennlinie, laufend speichern, Markierungen, Vergleich, Bauteilprüfung). Neue Tabs „Automatik“,
   „Kennlinie“, „Bauteile“, „Vergleich“; der Code der Zusatzfunktionen liegt in `programm/app/js/`.

@@ -86,7 +86,7 @@ function lsAnzeigen() {
   statusPille('ls-status', ...status);
   $('ls-info').textContent = ls.fehler || (ls.datei
     ? `${ls.pfad.split(/[\\/]/).pop()} · ${ls.geschrieben.toLocaleString('de-DE')} Zeilen${ls.zuletzt ? ' · zuletzt ' + uhrzeit(ls.zuletzt) : ''}`
-    : 'Nach einem Absturz oder Stromausfall ist dann nichts verloren.');
+    : '');
   $('ls-info').style.color = ls.fehler ? 'var(--err)' : '';
   if (lsEinst.an && ls.datei) chipSetzen('laufend', 'Speichert', `${ls.geschrieben.toLocaleString('de-DE')} Zeilen`, () => { $('ls-an').checked = false; $('ls-an').dispatchEvent(new Event('change')); });
   else chipEntfernen('laufend');

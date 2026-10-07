@@ -360,7 +360,6 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
           <button id="leeren" disabled>Leeren</button>
           <button id="bericht" disabled title="Messbericht mit Kurven, Kennwerten und Markierungen">Bericht (PDF) …</button>
         </div>
-        <p class="hinweis">Aufgezeichnet wird jede Messung ab dem Verbinden, auch wenn das Fenster minimiert ist. Die CSV-Datei nutzt Semikolon und Dezimalkomma und öffnet sich so direkt in Excel.</p>
       </section>
 
       <section class="panel">
@@ -372,7 +371,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         </div>
         <div class="zeile"><span class="klein ordner" id="ls-ordner">–</span></div>
         <div class="zeile"><button id="ls-ordner-waehlen">Ordner wählen …</button><button id="ls-ordner-oeffnen">Ordner öffnen</button></div>
-        <p class="hinweis" id="ls-info">Nach einem Absturz oder Stromausfall ist dann nichts verloren.</p>
+        <p class="hinweis" id="ls-info"></p>
       </section>
 
       <section class="panel">
@@ -383,7 +382,6 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
           <div class="kachel"><div class="name">Ausgang eingeschaltet</div><div class="zahl" id="zeit-an">–</div></div>
           <div class="kachel"><div class="name">Zeit in CV / CC</div><div class="zahl klein" id="zeit-modus">–</div></div>
         </div>
-        <p class="hinweis">Aufsummiert aus Leistung und Strom über die Zeit; Lücken über 10 s (z. B. Verbindung weg) zählen nicht mit.</p>
       </section>
 
       <section class="panel">
@@ -425,7 +423,6 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         <div class="felder"><input type="text" id="ab-unter" class="kurz" inputmode="decimal"> A, für <input type="text" id="ab-unter-s" class="kurz" inputmode="numeric"> s</div>
         <div class="fortschritt"><i id="ab-unter-balken"></i></div><span class="wert" id="ab-unter-wert"></span>
       </div>
-      <p class="hinweis">„Strom fällt unter“ zählt erst, nachdem der Strom einmal darüber lag – sonst schaltet ein Ausgang ohne Last sofort ab.</p>
       <div class="zeile"><button id="ab-start" class="haupt">Überwachen</button><button id="ab-stopp">Beenden</button></div>
       <p class="hinweis" id="ab-info"></p>
     </section>
@@ -434,7 +431,6 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
       <h2>Grenzwerte und Alarme <span class="rechts"><label class="klein"><input type="checkbox" id="al-aktiv"> Alarme aktiv</label></span></h2>
       <div class="regeln" id="al-regeln"></div>
       <div class="zeile"><button id="al-neu">+ Regel</button><label class="klein"><input type="checkbox" id="al-ton" checked> Ton</label></div>
-      <p class="hinweis">Werte mit Vorsatz gehen auch: „1,5“, „500m“, „4,7k“. Ein Alarm löst aus, wenn die Bedingung zwei Messungen hintereinander gilt, und erst wieder, nachdem sie einmal nicht mehr galt.</p>
       <p class="hinweis" id="al-info"></p>
     </section>
 

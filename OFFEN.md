@@ -25,7 +25,10 @@ Eigenheiten des Geräts:
 - `…:RANG:NULL?` und `FUNC:VOLT?` antworten `ERR`; ob Relativ wirkt, lässt sich nur am Display sehen.
 - Direkt nach dem Einschalten meldet `MEAS:ALL:INFO?` ~0,2 s lang Modus 2 (CC), auch ohne Strom. „Strombegrenzung
   greift“ prüft das Programm deshalb am Strom (≥ 90 % der Grenze), nicht am Modus.
-- Gelegentlich antwortet das Gerät auf `MEAS:ALL:INFO?` mit `ERR` – einzelne Aussetzer stehen grau im Log.
+- Ganz selten antwortet das Gerät auf `MEAS:ALL:INFO?` oder `CONF:ALL?` mit `ERR`. Am 07.10. nicht nachstellbar: je
+  rund 3000 Abfragen ohne Pause, im Takt des Programms, beim Drücken der Display-Taste und beim Wechsel aller acht
+  Messfunktionen kein einziges `ERR`; Stellbefehle schicken keine Antwort zurück (also keine verrutschte Antwort).
+  Das Programm fragt nach einem `ERR` sofort noch einmal; ins Log kommt es nur, wenn auch die zweite Antwort fehlt.
 - Widerstand ohne Bauteil (OL): im Automatikbetrieb springt das Gerät zwischen den Bereichen; ein fester Bereich
   landet dann manchmal eine Stufe zu hoch. Das Programm liest den Bereich nach 1,5 s zurück und setzt ihn notfalls neu.
 - Einmal blieb ein `OUTP OFF` ohne Wirkung (nicht nachstellbar). Das Programm liest den Ausgang nach jedem Schalten
@@ -54,6 +57,8 @@ ist grün. Neue Version = höhere `version` in `programm/package.json` und ein R
 
 ## Umgesetzt
 
+- 07.10.: Nach einem `ERR` des Geräts fragt das Programm sofort noch einmal (Marco sah zwei „Einzelner Aussetzer“
+  im Log). Selbsttest streut im Demo-Modus `ERR` ein; zwei Gerätetests fehlerfrei.
 - 07.10.: **Repo öffentlich** (SPM-9, Marco). Die Versionsprüfung zeigt jetzt grün oder rot statt grau.
 - 07.10., Version 1.0.1: Knopf **„Display umschalten“** im Multimeter-Feld (`SIM:KEY:DISP`). Marco war aufgefallen,
   dass das Display beim Umschalten der Messfunktion nicht mitwechselt: Es stand auf einer Netzteil-Ansicht.

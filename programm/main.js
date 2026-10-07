@@ -628,6 +628,14 @@ function pruefenLaufen() {
             flaeche.konsole = konsole;
             fs.writeFileSync(bildDatei, (await frischesBild()).toPNG());
 
+            // Ein einzelnes „ERR“ des Geräts fängt die zweite Abfrage ab; erst zwei hintereinander landen im Log
+            const aussetzer = () => js("[...document.querySelectorAll('#konsole-log div')].filter(z => z.textContent.includes('Aussetzer')).length");
+            const errVorher = await aussetzer();
+            await js('zustand.geraet.errNoch = 1'); await warten(1500);
+            const errEinmal = await aussetzer() - errVorher;
+            await js('zustand.geraet.errNoch = 2'); await warten(1500);
+            werte.err = { einmal: errEinmal, zweimal: await aussetzer() - errVorher - errEinmal, rest: await js('zustand.geraet.errNoch') };
+
             // Tab 2: Aufzeichnung - läuft erst nach „Starten“
             await js("document.querySelector('.tab[data-seite=\"seite-aufz\"]').click()");
             await js("document.getElementById('aufz-start').click()");
@@ -939,7 +947,7 @@ function pruefenLaufen() {
             fs.writeFileSync(bildName('1600'), (await frischesBild()).toPNG());
 
             const ok =schnittstelle.serial && schnittstelle.bruecke === 'object' && portwahl.offen && /Verbinden$/.test(portwahl.ergebnis)
-                && werte.modus === 'CC' && werte.punkte > 5 && werte.vorStart === 0 && flaeche.fenster === `${BREITE} x ${HOEHE}` && !flaeche.scrollt
+                && werte.modus === 'CC' && werte.punkte > 5 && werte.vorStart === 0 && werte.err.einmal === 0 && werte.err.zweimal === 1 && werte.err.rest === 0 && flaeche.fenster === `${BREITE} x ${HOEHE}` && !flaeche.scrollt
                 && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && konsole.sichtbar >= 6 && konsole.luecke <= 12
                 && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt && aufz.status === 'läuft'
                 && aufz.stopp.gleich && aufz.stopp.status === 'aus' && aufz.stopp.start && aufz.stopp.liveWeiter && aufz.weiter

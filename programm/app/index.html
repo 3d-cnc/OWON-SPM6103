@@ -884,6 +884,7 @@ class DemoGeraet {
     this.ausgang = false; this.uSoll = 12; this.iSoll = 1.5; this.ovp = 61; this.ocp = 10.5;
     this.funktion = 'VOLT:DC'; this.auto = true; this.hold = false; this.rel = false; this.relWert = 0;
     this.start = performance.now(); this.letzterDmm = null;
+    this.errNoch = 0;   // so viele Messabfragen beantwortet die Demo mit „ERR“ (für den Selbsttest)
     this.lastArt = 'widerstand';   // umschaltbar: widerstand | akku | led
     this.akkuSoc = 0.3; this.akkuZeit = null;
   }
@@ -960,6 +961,7 @@ class DemoGeraet {
     b = b.trim().toUpperCase().replace(/^:/, '').replace(/^SENS(E)?:/, '');
     let m;
     if (b === '*IDN?') return 'OWON,SPM6103,DEMO0001,FV:V1.0.0';
+    if (this.errNoch > 0 && /^(MEAS|CONF)/.test(b)) { this.errNoch--; return 'ERR'; }
     if (b === 'MEAS:ALL:INFO?') { const s = this.psu(); return `${s.u.toFixed(3)} ${s.i.toFixed(3)} ${(s.u * s.i).toFixed(3)} 0 0 0 ${s.modus}`; }
     if (b === 'MEAS:ALL?') { const s = this.psu(); return `${s.u.toFixed(3)} ${s.i.toFixed(3)} ${(s.u * s.i).toFixed(3)}`; }
     if (b === 'MEAS:VOLT?') return this.psu().u.toFixed(3);
@@ -1165,11 +1167,18 @@ function zahlenAus(text) {
   return text.trim().split(/[\s,;]+/).map(x => /^ON$/i.test(x) ? 1 : /^OFF$/i.test(x) ? 0 : Number(x)).filter(Number.isFinite);
 }
 
+// Das SPM6103 antwortet ganz selten mit „ERR“ statt mit Messwerten, ohne erkennbaren Anlass (am 07.10. in
+// rund 3000 Abfragen nicht nachstellbar) – dann gleich noch einmal fragen, statt die Messung zu verwerfen
+async function messFrage(befehl) {
+  const a = await frage(befehl);
+  return a.trim().toUpperCase() === 'ERR' ? frage(befehl) : a;
+}
+
 async function netzteilLesen(rec) {
   const art = zustand.faehig.psu;
   if (art === 'info' || art === 'alle') {
     const befehlText = art === 'info' ? 'MEAS:ALL:INFO?' : 'MEAS:ALL?';
-    const antwort = await frage(befehlText);
+    const antwort = await messFrage(befehlText);
     const a = zahlenAus(antwort);
     // MEAS:ALL? liefert am SPM6103 nur U und I – die Leistung dann selbst rechnen
     if (a.length < 2) throw new Error(`Unerwartete Antwort auf ${befehlText}: »${antwort}«`);
@@ -1236,7 +1245,7 @@ async function messSchleife() {
     if (zustand.faehig.dmm) {
       try {
         const art = zustand.faehig.dmm;
-        const antwort = await frage(art === 'alle' ? 'CONF:ALL?' : 'CONF?');
+        const antwort = await messFrage(art === 'alle' ? 'CONF:ALL?' : 'CONF?');
         if (!dmmLesen(antwort, art, rec)) fehler = new Error(`Unerwartete Multimeter-Antwort: »${antwort}«`);
       } catch (e) { fehler = e; }
     }

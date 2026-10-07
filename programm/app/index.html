@@ -311,6 +311,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         <label class="klein">Messbereich <select id="bereich" disabled></select></label>
         <button id="hold" disabled>Hold</button>
         <button id="rel" disabled title="Relativmessung: aktueller Wert wird zu null">Relativ</button>
+        <button id="display" disabled title="Wie die Display-Taste am Gerät">Display am Gerät</button>
       </div>
     </section>
 
@@ -976,7 +977,7 @@ class DemoGeraet {
     if ((m = b.match(/:NULL (ON|OFF)$/))) { this.rel = m[1] === 'ON'; this.relWert = this.rel ? this.dmmSi() : 0; return null; }
     if ((m = b.match(/:RANG:AUTO (ON|OFF)$/))) { this.auto = m[1] === 'ON'; return null; }
     if (/:RANG \S+$/.test(b)) { this.auto = false; return null; }
-    if (b === 'SYST:LOC' || b === 'SYST:REM' || b === '*RST') return null;
+    if (b === 'SYST:LOC' || b === 'SYST:REM' || b === '*RST' || b === 'SIM:KEY:DISP') return null;
     return undefined;   // unbekannt: keine Antwort, wie ein echtes Gerät
   }
   async frage(b, wartezeit = 800) {
@@ -1057,7 +1058,7 @@ function statusSetzen(art, text, idn = '') {
 }
 
 function bedienungFreigeben(an) {
-  for (const id of ['ausgang', 'bereich', 'hold', 'rel', 'konsole-eingabe', 'konsole-senden'])
+  for (const id of ['ausgang', 'bereich', 'hold', 'rel', 'display', 'konsole-eingabe', 'konsole-senden'])
     $(id).disabled = !an;
   document.querySelectorAll('[data-setze], #funktionen button').forEach(b => b.disabled = !an);
   $('verbinden').textContent = an ? 'Trennen' : 'Verbinden';
@@ -1814,6 +1815,9 @@ $('rel').addEventListener('click', async () => {
   await befehl(f.rel + ' ' + (zustand.rel ? 'ON' : 'OFF'));
   anzeigeAktualisieren();
 });
+
+// Das Gerät startet in einer Netzteil-Ansicht ohne Multimeter; die Ansicht lässt sich nicht abfragen, nur weiterschalten
+$('display').addEventListener('click', () => befehl('SIM:KEY:DISP'));
 
 // „Anhalten“ friert die Ansicht ein; „Weiter“ kehrt zum Mitlaufen zurück – auch nach Zoomen oder Verschieben
 function anhaltenKnopf() {

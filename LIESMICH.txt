@@ -50,7 +50,9 @@ Tab "Live" (Strg+1):
   Gesendet wird, sobald das Drehen kurz ruht. Nie über OVP bzw. OCP hinaus.
   Im leeren Eingabefeld gehen auch die Pfeiltasten.
 - Multimeter: Messwert live, Funktion wählen (V DC/AC, A DC/AC, Ohm, C,
-  Diode, Durchgang), Messbereich, Hold, Relativ
+  Diode, Durchgang), Messbereich, Hold, Relativ. "Display am Gerät" drückt
+  die Display-Taste: Das Gerät startet in einer Netzteil-Ansicht, die
+  Messfunktion sieht man nur in der zweiten und dritten Ansicht.
 - Vorlagen: Lieblingswerte als Knöpfe (z. B. 5 V USB). Ein Klick setzt
   Spannung, Strom, OVP und OCP; ist der Ausgang an, fragt das Programm vorher.
   "+" speichert die aktuellen Sollwerte als neue Vorlage, Rechtsklick löscht.

@@ -2,7 +2,7 @@
 
 Windows-Programm, das Messwerte des Labornetzteils mit Multimeter **OWON SPM6103** live anzeigt und aufzeichnet. Es spricht über USB (CH340, SCPI) direkt mit dem Gerät und läuft als einzelne portable .exe.
 
-- **Tab „Live“:** Spannung, Strom und Leistung, CV/CC, Schutzmeldungen, Ausgang, Sollwerte (auch per Mausrad wie am Drehknopf) und Sollwert-Vorlagen. Dazu der Multimeter-Wert mit Wahl der Messfunktion und des Messbereichs, eine SCPI-Konsole, vier Kurven zum Zoomen und Verschieben mit Ausschnitt-Auswertung, Kurven als Bild, Markierungen mit Notiz (Taste M).
+- **Tab „Live“:** Spannung, Strom und Leistung, CV/CC, Schutzmeldungen, Ausgang, Sollwerte (auch per Mausrad wie am Drehknopf) und Sollwert-Vorlagen. Dazu der Multimeter-Wert mit Wahl der Messfunktion und des Messbereichs, ein Knopf für die Display-Taste des Geräts (die Messfunktion zeigt das Gerät nur in seiner zweiten und dritten Ansicht), eine SCPI-Konsole, vier Kurven zum Zoomen und Verschieben mit Ausschnitt-Auswertung, Kurven als Bild, Markierungen mit Notiz (Taste M).
 - **Tab „Aufzeichnung“:** CSV-Export für Excel, laufendes Speichern während der Messung, Messbericht als PDF, Energie (Wh) und Ladung (Ah), Kennwerte der ganzen Aufzeichnung und eine Tabelle aller Messpunkte.
 - **Tab „Automatik“:** Abschalten nach Zeit, Wh, mAh oder bei kleinem Strom; Grenzwerte mit Alarm; Ablaufprogramme mit Rampen; Akku laden (Li-Ion, LiHV, LiFePO4, Blei, NiMH).
 - **Tab „Prüfstand“:** Erst-Einschalten neuer Platinen (langsam hochfahren, bei Auffälligkeit sofort aus, Ruhestrom prüfen) und Zyklentest mit Fehlererkennung.

@@ -64,7 +64,7 @@ function feSenden(sofort = false) {
   const jetzt = Date.now();
   if (!sofort && jetzt - fe.zuletzt < 500) return;
   fe.zuletzt = jetzt;
-  const r = zustand.letzter, d = zustand.daten;
+  const r = zustand.letzter, d = zustand.live;
   const ab = ersterIndexAb(d, jetzt - 120000), schritt = Math.max(1, Math.ceil((d.length - ab) / 240));
   const verlauf = [];
   for (let j = ab; j < d.length; j += schritt) verlauf.push([d[j].t, d[j].u, d[j].i]);

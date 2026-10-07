@@ -63,7 +63,7 @@ async function lsSchreiben(schliessen = false) {
 }
 
 messHoerer.push(rec => {
-  if (!lsEinst.an || !window.spm) return;
+  if (!lsEinst.an || !window.spm || zustand.daten.at(-1) !== rec) return;   // nur aufgezeichnete Messungen
   // Aufzeichnung geleert? Dann die alte Datei abschließen, die nächste Messung beginnt eine neue
   if (ls.datei && ls.daten !== zustand.daten) { ls.bis = ls.daten.length; lsSchreiben(true); return; }
   const index = zustand.daten.length - 1;
@@ -78,11 +78,18 @@ messHoerer.push(rec => {
 });
 setInterval(() => { if (ls.datei) lsSchreiben(); }, 1000);
 trennHoerer.push(() => { if (ls.datei) { ls.bis = ls.daten.length; lsSchreiben(true); } });
+// Beenden: je Ausgang eine Datei - die laufende abschließen; eine Datei für die Sitzung bleibt offen und geht nach „Starten“ weiter
+aufzHoerer.push(an => {
+  if (!an && ls.datei && lsEinst.modus === 'ausgang') { ls.bis = ls.daten.length; lsSchreiben(true); }
+  lsAnzeigen();
+});
 window.addEventListener('beforeunload', () => { if (ls.datei) lsSchreiben(true); });
 
 function lsAnzeigen() {
   $('ls-ordner').textContent = lsEinst.ordner || '–';
-  const status = !lsEinst.an ? ['aus', ''] : ls.datei ? ['schreibt', 'laeuft'] : lsEinst.modus === 'ausgang' ? ['wartet auf Ausgang', ''] : zustand.geraet ? ['startet …', ''] : ['wartet auf Verbindung', ''];
+  const status = !lsEinst.an ? ['aus', ''] : ls.datei ? (zustand.aufzeichnet ? ['schreibt', 'laeuft'] : ['pausiert', ''])
+    : !zustand.geraet ? ['wartet auf Verbindung', ''] : !zustand.aufzeichnet ? ['wartet auf Start', '']
+    : lsEinst.modus === 'ausgang' ? ['wartet auf Ausgang', ''] : ['startet …', ''];
   statusPille('ls-status', ...status);
   $('ls-info').textContent = ls.fehler || (ls.datei
     ? `${ls.pfad.split(/[\\/]/).pop()} · ${ls.geschrieben.toLocaleString('de-DE')} Zeilen${ls.zuletzt ? ' · zuletzt ' + uhrzeit(ls.zuletzt) : ''}`

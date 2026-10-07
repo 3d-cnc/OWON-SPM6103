@@ -612,7 +612,7 @@ function pruefenLaufen() {
                 u: document.getElementById('u').textContent, i: document.getElementById('i').textContent,
                 modus: document.getElementById('m-modus').textContent,
                 dmm: document.getElementById('dmm').textContent + ' ' + document.getElementById('dmm-einheit').textContent,
-                punkte: zustand.daten.length, meldung: document.getElementById('meldung').textContent })`);
+                punkte: zustand.live.length, vorStart: zustand.daten.length, meldung: document.getElementById('meldung').textContent })`);
             // Auf 1920 x 1080 muss die Live-Seite ohne Scrollen passen
             const flaeche = await js(`(() => { const m = document.querySelector('main');
                 return { fenster: innerWidth + ' x ' + innerHeight, scrollt: m.scrollHeight > m.clientHeight + 1 || m.scrollWidth > m.clientWidth + 1,
@@ -628,15 +628,26 @@ function pruefenLaufen() {
             flaeche.konsole = konsole;
             fs.writeFileSync(bildDatei, (await frischesBild()).toPNG());
 
-            // Tab 2: Aufzeichnung
+            // Tab 2: Aufzeichnung - läuft erst nach „Starten“
             await js("document.querySelector('.tab[data-seite=\"seite-aufz\"]').click()");
-            await warten(800);
-            const aufz = await js(`({ zeilen: document.querySelectorAll('#tabelle-zeilen .tz').length, anzahl: document.getElementById('anzahl').textContent,
+            await js("document.getElementById('aufz-start').click()");
+            await warten(3000);
+            const aufz = await js(`({ status: document.getElementById('aufz-status').textContent, zeilen: document.querySelectorAll('#tabelle-zeilen .tz').length, anzahl: document.getElementById('anzahl').textContent,
                 kennwerte: document.querySelectorAll('#kennwerte tr').length, energie: document.getElementById('energie').textContent,
                 zaehler: document.getElementById('tab-zaehler').textContent,
                 scrollt: document.querySelector('main').scrollHeight > document.querySelector('main').clientHeight + 1 })`);
             const bildName = (zusatz) => bildDatei.replace(/\.png$/i, '') + '-' + zusatz + '.png';
             fs.writeFileSync(bildName('aufzeichnung'), (await frischesBild()).toPNG());
+            // Beenden hält die Aufzeichnung an, Starten setzt sie fort
+            await js("document.getElementById('aufz-stopp').click()");
+            await warten(600);
+            const nachStopp = await js('zustand.daten.length');
+            await warten(1200);
+            aufz.stopp = { gleich: await js('zustand.daten.length') === nachStopp, status: await js("document.getElementById('aufz-status').textContent"),
+                start: await js("!document.getElementById('aufz-start').disabled"), liveWeiter: await js('zustand.live.length') > werte.punkte };
+            await js("document.getElementById('aufz-start').click()");
+            await warten(1200);
+            aufz.weiter = await js('zustand.daten.length') > nachStopp;
             await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click()");
 
             /* ---------- Zusatzfunktionen SPM-10 bis SPM-19 ---------- */
@@ -928,9 +939,10 @@ function pruefenLaufen() {
             fs.writeFileSync(bildName('1600'), (await frischesBild()).toPNG());
 
             const ok =schnittstelle.serial && schnittstelle.bruecke === 'object' && portwahl.offen && /Verbinden$/.test(portwahl.ergebnis)
-                && werte.modus === 'CC' && werte.punkte > 5 && flaeche.fenster === `${BREITE} x ${HOEHE}` && !flaeche.scrollt
+                && werte.modus === 'CC' && werte.punkte > 5 && werte.vorStart === 0 && flaeche.fenster === `${BREITE} x ${HOEHE}` && !flaeche.scrollt
                 && konsole.eintraege > 40 && konsole.scrollbar && konsole.amEnde && konsole.kurveNachher === flaeche.kurve && konsole.sichtbar >= 6 && konsole.luecke <= 12
-                && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt
+                && aufz.zeilen > 5 && aufz.kennwerte >= 4 && !aufz.scrollt && aufz.status === 'läuft'
+                && aufz.stopp.gleich && aufz.stopp.status === 'aus' && aufz.stopp.start && aufz.stopp.liveWeiter && aufz.weiter
                 && vergleich.length === 0 && ['aktuell', 'neu', 'unbekannt'].includes(pruefung.symbol) && /^v\d+\.\d+\.\d+$/.test(pruefung.text)
                 && menue.offen && menue.punkte.length === 6 && update.dialog && update.knopf === 'neu' && update.menuePunkt
                 && groesse.vorher === '1920x1080' && groesse.fenster === '1600 x 900' && !groesse.quer && groesse.gespeichert.breite === 1600
@@ -971,9 +983,9 @@ function geraetLaufen() {
             schritt('verbunden', await js("({ status: document.getElementById('status-text').textContent, idn: document.getElementById('idn').textContent, faehig: zustand.faehig })"));
 
             // Ein paar Sekunden messen lassen
-            const vorher = await js('zustand.daten.length');
+            const vorher = await js('zustand.live.length');
             await warten(6000);
-            schritt('messen', await js(`({ punkte: zustand.daten.length - ${vorher}, rate: document.getElementById('rate').textContent, letzter: zustand.letzter, ausgang: zustand.ausgang, soll: zustand.soll })`));
+            schritt('messen', await js(`({ punkte: zustand.live.length - ${vorher}, rate: document.getElementById('rate').textContent, letzter: zustand.letzter, ausgang: zustand.ausgang, soll: zustand.soll })`));
             const geraet = async (b) => js(`frage(${JSON.stringify(b)}).catch(e => 'FEHLER: ' + e.message)`);
             const urspruenglich = { volt: await geraet('VOLT?'), curr: await geraet('CURR?'), ovp: await geraet('VOLT:LIM?'), ocp: await geraet('CURR:LIM?') };
             schritt('urspruenglich', urspruenglich);

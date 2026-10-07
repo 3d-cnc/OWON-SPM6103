@@ -311,7 +311,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
         <label class="klein">Messbereich <select id="bereich" disabled></select></label>
         <button id="hold" disabled>Hold</button>
         <button id="rel" disabled title="Relativmessung: aktueller Wert wird zu null">Relativ</button>
-        <button id="display" disabled title="Wie die Display-Taste am Gerät">Display am Gerät</button>
+        <button id="display" disabled title="Wie die Display-Taste am Gerät">Display umschalten</button>
       </div>
     </section>
 
@@ -349,7 +349,11 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
   <div class="seite" id="seite-aufz">
     <div class="aufz-links">
       <section class="panel">
-        <h2>Aufzeichnung</h2>
+        <h2>Aufzeichnung <span class="rechts"><span class="status-pille" id="aufz-status">aus</span></span></h2>
+        <div class="zeile">
+          <button id="aufz-start" class="haupt" disabled>Starten</button>
+          <button id="aufz-stopp" disabled>Beenden</button>
+        </div>
         <div class="kacheln">
           <div class="kachel"><div class="name">Messpunkte</div><div class="zahl" id="anzahl">0</div></div>
           <div class="kachel"><div class="name">Dauer</div><div class="zahl" id="dauer">–</div></div>
@@ -357,7 +361,7 @@ dialog.fenster .rechtsbuendig { justify-content: flex-end; }
           <div class="kachel"><div class="name">Als CSV gespeichert</div><div class="zahl klein" id="gespeichert-status">–</div></div>
         </div>
         <div class="zeile">
-          <button id="csv" class="haupt" disabled>Als CSV speichern</button>
+          <button id="csv" disabled>Als CSV speichern</button>
           <button id="leeren" disabled>Leeren</button>
           <button id="bericht" disabled title="Messbericht mit Kurven, Kennwerten und Markierungen">Bericht (PDF) …</button>
         </div>
@@ -994,7 +998,7 @@ class DemoGeraet {
 
 const zustand = {
   geraet: null, demo: false, laeuft: false, faehig: { psu: null, dmm: null },
-  daten: [], letzter: null, funktion: null, dmmAuto: null, dmmBereich: null,
+  daten: [], live: [], aufzeichnet: false, letzter: null, funktion: null, dmmAuto: null, dmmBereich: null,
   hold: false, rel: false, ausgang: null, angehalten: null, hoverT: null, fehlerFolge: 0, gespeichert: 0,
   ereignisse: [], offeneNotizen: [],   // Markierungen (von Hand und von den Automatiken)
   ansicht: null, auswahl: null,        // Verlauf: gezoomter Zeitbereich, markierter Ausschnitt (js/verlauf.js)
@@ -1003,6 +1007,7 @@ const zustand = {
 // Andockstellen für die Zusatzfunktionen in js/: jede Messung, jedes Trennen, jeder Tabwechsel
 const messHoerer = [];
 const trennHoerer = [];
+const aufzHoerer = [];   // Aufzeichnung gestartet oder beendet
 const seitenHoerer = {};
 
 /* ---------- Konsole ---------- */
@@ -1061,6 +1066,7 @@ function bedienungFreigeben(an) {
   for (const id of ['ausgang', 'bereich', 'hold', 'rel', 'display', 'konsole-eingabe', 'konsole-senden'])
     $(id).disabled = !an;
   document.querySelectorAll('[data-setze], #funktionen button').forEach(b => b.disabled = !an);
+  aufzeichnungAnzeigen();
   $('verbinden').textContent = an ? 'Trennen' : 'Verbinden';
   $('verbinden').classList.toggle('haupt', !an);
   $('demo').disabled = an;
@@ -1316,10 +1322,13 @@ function kennwertAufnehmen(schluessel, v) {
 
 // Jede Messung landet hier: Liste, Kennwerte und die aufsummierte Energie wachsen mit,
 // offene Markierungen hängen sich an, danach sind die Zusatzfunktionen dran
+// Die Kurven auf „Live“ zeigen jede Messung, die Aufzeichnung nur die zwischen „Starten“ und „Beenden“
+const LIVE_HOECHSTENS = 200000;   // gut 14 Stunden bei 3,8 Messungen/s
 function aufnehmen(rec) {
   if (zustand.offeneNotizen.length) { rec.notiz = zustand.offeneNotizen.join(' | '); zustand.offeneNotizen = []; }
-  zustand.daten.push(rec);
-  statistikAufnehmen(rec);
+  zustand.live.push(rec);
+  if (zustand.live.length > LIVE_HOECHSTENS) zustand.live.splice(0, LIVE_HOECHSTENS / 10);
+  if (zustand.aufzeichnet) { zustand.daten.push(rec); statistikAufnehmen(rec); }
   for (const f of messHoerer) { try { f(rec); } catch (e) { console.error(e); } }
 }
 
@@ -1355,6 +1364,10 @@ function aufzeichnungAnzeigen() {
   const d = zustand.daten, n = d.length, st = zustand.statistik;
   $('tab-zaehler').textContent = n ? n.toLocaleString('de-DE') : '';
   $('csv').disabled = $('leeren').disabled = $('bericht').disabled = !n;
+  $('aufz-start').disabled = zustand.aufzeichnet || !zustand.geraet;
+  $('aufz-stopp').disabled = !zustand.aufzeichnet;
+  $('aufz-status').textContent = zustand.aufzeichnet ? 'läuft' : 'aus';
+  $('aufz-status').className = 'status-pille' + (zustand.aufzeichnet ? ' laeuft' : '');
   if (!tabAktiv('seite-aufz')) return;
 
   $('anzahl').textContent = n.toLocaleString('de-DE');
@@ -1526,7 +1539,7 @@ function schoeneSchritte(min, max, anzahl) {
 const stellenFuer = schritt => (String(+schritt.toPrecision(6)).split('.')[1] || '').length;
 
 function zeichnen() {
-  const daten = zustand.daten;
+  const daten = zustand.live;
   const fenster = +$('fenster').value * 1000;
   const ende = zustand.angehalten ?? (daten.length ? Math.max(Date.now(), daten[daten.length - 1].t) : Date.now());
   const anfang = fenster ? ende - fenster : (daten.length ? daten[0].t : ende - 60000);
@@ -1673,7 +1686,7 @@ function zeichnen() {
 }
 
 function naechster(t) {
-  const d = zustand.daten;
+  const d = zustand.live;
   const j = ersterIndexAb(d, t);
   if (j <= 0) return d[0];
   if (j >= d.length) return d[d.length - 1];
@@ -1832,6 +1845,18 @@ $('anhalten').addEventListener('click', () => {
   zeichnenAnfordern();
 });
 $('fenster').addEventListener('change', zeichnenAnfordern);
+
+function aufzeichnungSchalten(an) {
+  if (an === zustand.aufzeichnet) return;
+  zustand.aufzeichnet = an;
+  if (an) zustand.statistik.vorher = null;   // die Pause zählt nicht zu Energie und Zeiten
+  log(an ? 'Aufzeichnung gestartet' : `Aufzeichnung beendet (${zustand.daten.length.toLocaleString('de-DE')} Messpunkte)`, 'info');
+  for (const f of aufzHoerer) { try { f(an); } catch (e) { console.error(e); } }
+  aufzeichnungAnzeigen();
+}
+$('aufz-start').addEventListener('click', () => aufzeichnungSchalten(true));
+$('aufz-stopp').addEventListener('click', () => aufzeichnungSchalten(false));
+trennHoerer.push(() => aufzeichnungSchalten(false));
 
 $('csv').addEventListener('click', csvSpeichern);
 $('leeren').addEventListener('click', () => {

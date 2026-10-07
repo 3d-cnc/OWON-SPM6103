@@ -18,7 +18,7 @@ function vzInfo() {
   const a = zustand.auswahl, el = $('auswahl-info');
   if (!a) { el.textContent = ''; el.title = ''; return; }
   // Energie und Ladung nur im Ausschnitt (Trapezregel wie in der Aufzeichnung)
-  const d = zustand.daten;
+  const d = zustand.live;
   let energie = 0, ladung = 0;
   for (let j = Math.max(ersterIndexAb(d, a[0]), 1); j < d.length && d[j].t <= a[1]; j++) {
     const v = d[j - 1], r = d[j], dt = (r.t - v.t) / 1000;
@@ -35,7 +35,7 @@ $('auswahl-info').addEventListener('click', () => { zustand.auswahl = null; vzAu
 for (const k of KURVEN) {
   const c = k.canvas;
   c.addEventListener('wheel', e => {
-    if (!zustand.bereichT || !zustand.daten.length) return;
+    if (!zustand.bereichT || !zustand.live.length) return;
     e.preventDefault();
     const [t0, t1] = zustand.bereichT, mitte = vzZeit(c, e.clientX), f = e.deltaY < 0 ? 0.8 : 1.25;
     let a = mitte - (mitte - t0) * f, b = mitte + (t1 - mitte) * f;

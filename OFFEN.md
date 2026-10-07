@@ -33,7 +33,7 @@ Eigenheiten des Geräts:
 - Die Display-Taste schaltet reihum durch vier Ansichten: 1 Netzteil mit Kurve (nach dem Einschalten),
   2 nur Multimeter, 3 Multimeter oben und Netzteil unten, 4 Netzteil groß. `FUNC:…` wechselt die Messfunktion
   sofort, zu sehen ist das aber nur in Ansicht 2 und 3 (am 07.10. mit Marco geprüft). Die Ansicht lässt sich nicht
-  abfragen, `SIM:KEY:DISP` schaltet sie nur eine weiter. Dafür gibt es den Knopf „Display am Gerät“.
+  abfragen, `SIM:KEY:DISP` schaltet sie nur eine weiter. Dafür gibt es den Knopf „Display umschalten“.
 
 **Versionsprüfung (seit 1.1.0):** Das Programm fragt `api.github.com/repos/3d-cnc/OWON-SPM6103/releases/latest`.
 Solange das Repo privat ist, antwortet GitHub mit 404, und das Symbol neben der Version bleibt grau
@@ -55,8 +55,13 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 
 ## Umgesetzt
 
-- 07.10., Version 1.0.1: Knopf **„Display am Gerät“** im Multimeter-Feld (`SIM:KEY:DISP`). Marco war aufgefallen,
+- 07.10., Version 1.0.1: Knopf **„Display umschalten“** im Multimeter-Feld (`SIM:KEY:DISP`). Marco war aufgefallen,
   dass das Display beim Umschalten der Messfunktion nicht mitwechselt: Es stand auf einer Netzteil-Ansicht.
+  Dazu **Starten/Beenden** auf „Aufzeichnung“ (Marco): Die Aufzeichnung beginnt nicht mehr beim Verbinden. Die Kurven
+  auf „Live“ haben einen eigenen Puffer (`zustand.live`, höchstens 200 000 Punkte) und laufen immer; aufgezeichnet
+  wird in `zustand.daten` nur bei `zustand.aufzeichnet`. Trennen beendet die Aufzeichnung. Laufend speichern: eine
+  Sitzungsdatei bleibt bei „Beenden“ offen („pausiert“), eine Datei je Ausgang wird abgeschlossen. Release 1.0.1
+  blieb (Marco), nur die .exe darin ersetzt.
 - 07.10.: **Neue Zählung** (Marco): alle bisherigen Releases und Tags (v1.0.0 bis v1.4.2) auf GitHub gelöscht,
   der Stand von 1.4.2 heißt jetzt **1.0.0**. Die Versionsnummern in den Einträgen darunter sind die alte Zählung.
   Dazu fünf Hinweistexte aus der Oberfläche entfernt (Laufend speichern, Aufzeichnung, Energie, Abschalten, Alarme).

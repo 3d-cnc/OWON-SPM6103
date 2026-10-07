@@ -50,7 +50,7 @@ Tab "Live" (Strg+1):
   Gesendet wird, sobald das Drehen kurz ruht. Nie über OVP bzw. OCP hinaus.
   Im leeren Eingabefeld gehen auch die Pfeiltasten.
 - Multimeter: Messwert live, Funktion wählen (V DC/AC, A DC/AC, Ohm, C,
-  Diode, Durchgang), Messbereich, Hold, Relativ. "Display am Gerät" drückt
+  Diode, Durchgang), Messbereich, Hold, Relativ. "Display umschalten" drückt
   die Display-Taste: Das Gerät startet in einer Netzteil-Ansicht, die
   Messfunktion sieht man nur in der zweiten und dritten Ansicht.
 - Vorlagen: Lieblingswerte als Knöpfe (z. B. 5 V USB). Ein Klick setzt
@@ -67,6 +67,10 @@ Tab "Live" (Strg+1):
   den Kurven, in der Tabelle der Aufzeichnung und in der CSV-Datei.
 
 Tab "Aufzeichnung" (Strg+2):
+- Starten und Beenden: Aufgezeichnet wird nur, was zwischen "Starten" und
+  "Beenden" gemessen wird, nicht schon ab dem Verbinden. Nach "Beenden" geht
+  "Starten" in derselben Aufzeichnung weiter; "Leeren" fängt neu an. Die Kurven
+  auf "Live" laufen immer mit. Trennen beendet die Aufzeichnung.
 - Messpunkte, Dauer, Beginn, ob schon als CSV gespeichert
 - Als CSV speichern (Semikolon, Dezimalkomma, öffnet direkt in Excel), Leeren
 - Laufend speichern: schreibt schon während der Messung in eine CSV-Datei

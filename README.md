@@ -59,3 +59,17 @@ Der Selbsttest startet das Programm in einem durchsichtigen Fenster im Demo-Modu
 - Feinverstellung (auch die Grenze an OVP), Erst-Einschalten (einmal in Ordnung, einmal Abbruch), Zyklentest (in Ordnung und mit Fehler), Zoomen und Ausschnitt im Verlauf, Bild speichern und kopieren, Messbericht als PDF (mit Bild der Berichtsseite), Fernanzeige (Code nötig, Daten, „Ausgang aus“ nur wenn erlaubt, Sperre nach falschen Codes, Bild der Handy-Seite).
 
 Dabei speichert er Bilder der Tabs, des Menüs und der Dialoge. Bei einem Fehler endet er mit Exit-Code 1. Er funktioniert auch mit der fertigen .exe.
+
+## Gerätetest am echten Netzteil
+
+```
+cd programm
+npx electron . --geraet=COM3 --pruefen=bild.png
+```
+
+Verbindet sich ohne Dialog mit dem angegebenen Port und bedient das Programm am echten Gerät:
+- Sollwerte, Feinverstellung und Vorlagen,
+- jede Messfunktion mit jedem Bereich,
+- Hold, Relativ, Alarm, Bauteilprüfung und Fernanzeige.
+
+Jede Fehlermeldung aus dem Log landet im Ergebnis, das ganze Log in `geraet-log.txt` neben dem Bild. Ohne `--mit-ausgang` bleibt der Ausgang aus; ist er bei Testbeginn an, bricht der Test ab, ohne etwas zu ändern. Mit `--mit-ausgang` kommen Ausgang, Abschalten, Ablauf, Erst-Einschalten, Zyklentest, Kennlinie und „Ausgang aus“ über die Fernanzeige dazu, mit höchstens 2 V und 50 mA. Am Ende stellt der Test die vorherigen Sollwerte wieder her.

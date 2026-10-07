@@ -71,7 +71,7 @@ function feSenden(sofort = false) {
   window.spm.fernDaten({
     t: jetzt, verbunden: !!zustand.geraet, demo: zustand.demo,
     u: r?.u, i: r?.i, p: r?.p, modus: r?.modus, ausgang: zustand.ausgang,
-    dmm: zustand.dmmAnzeige ? `${zustand.dmmAnzeige.anzeige} ${zustand.dmmAnzeige.einheit}` : null,
+    dmm: zustand.dmmAnzeige ? `${zustand.dmmAnzeige.anzeige} ${zustand.dmmAnzeige.einheit}`.trim() : null,
     dmmName: FUNKTIONEN[zustand.funktion]?.name ?? null,
     soll: zustand.soll ?? null,
     automatik: [...automatikChips.values()].map(c => c.el.textContent.replace(/Stopp$/, '').trim()),

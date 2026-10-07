@@ -26,7 +26,11 @@ const os = require('node:os');
 const path = require('node:path');
 const paket = require('./package.json');
 
-const pruefen = process.argv.find((a) => a.startsWith('--pruefen'));
+// Gerätetest am echten Netzteil: `electron . --geraet=COM3 [--mit-ausgang] [--pruefen=bild.png]`
+// Läuft wie der Selbsttest unsichtbar und mit eigenem, leerem Benutzerordner; wählt den Port selbst.
+const geraetPort = process.argv.find((a) => a.startsWith('--geraet='))?.split('=')[1]?.toUpperCase();
+const mitAusgang = process.argv.includes('--mit-ausgang');
+const pruefen = process.argv.find((a) => a.startsWith('--pruefen')) ?? (geraetPort ? '--pruefen' : undefined);
 
 if (pruefen) {
     app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'owon-spm6103-pruefen-')));
@@ -138,6 +142,12 @@ function fensterOeffnen() {
 
     sitzung.on('select-serial-port', (ereignis, ports, _wc, rueckruf) => {
         ereignis.preventDefault();
+        // Gerätetest: den angegebenen Port ohne Dialog nehmen
+        if (geraetPort) {
+            const p = ports.find((x) => String(x.portName).toUpperCase() === geraetPort);
+            rueckruf(p ? p.portId : '');
+            return;
+        }
         portAbbrechen();
         portRueckruf = rueckruf;
         portListe = ports;
@@ -555,7 +565,8 @@ if (!pruefen && !app.requestSingleInstanceLock()) {
         }]));
         einstellungenLesen();
         fensterOeffnen();
-        if (pruefen) pruefenLaufen();
+        if (geraetPort) geraetLaufen();
+        else if (pruefen) pruefenLaufen();
     });
 
     app.on('window-all-closed', () => app.quit());
@@ -929,6 +940,199 @@ function pruefenLaufen() {
         } catch (e) {
             console.log(JSON.stringify({ ok: false, ausnahme: String(e), fehler }, null, 1));
             app.exit(1);
+        }
+    });
+}
+
+/* ------------------------------------------------------------ Gerätetest am echten Netzteil */
+
+// Bedient das Programm wie ein Mensch und sammelt jede Fehlermeldung. Ohne --mit-ausgang bleibt der
+// Ausgang aus (Abbruch, falls er bei Testbeginn schon an ist). Am Ende stellt er die Werte wieder her.
+function geraetLaufen() {
+    const fehler = [];
+    const ordner = pruefen.includes('=') ? path.dirname(pruefen.split('=')[1]) : os.tmpdir();
+    const js = (code) => fenster.webContents.executeJavaScript(code);
+    const warten = (ms) => new Promise((weiter) => setTimeout(weiter, ms));
+    const bisWahr = async (ausdruck, ms) => { for (let n = 0; n < ms / 250; n++) { if (await js(ausdruck)) return true; await warten(250); } return false; };
+    const ergebnis = { port: geraetPort, mitAusgang, schritte: {} };
+    const schritt = (name, wert) => { ergebnis.schritte[name] = wert; };
+
+    fenster.webContents.on('console-message', (e) => { if (e.level === 'error') fehler.push(e.message); });
+
+    fenster.webContents.once('did-finish-load', async () => {
+        try {
+            // Alles mitschreiben, was im Log landet – auch über die 500 Zeilen der Konsole hinaus
+            await js(`window._logs = []; { const alt = log; log = (t, a = 'info') => { _logs.push([Date.now(), a, String(t)]); alt(t, a); }; } 1`);
+            await warten(500);
+            const knopf = await js("(() => { const r = document.getElementById('verbinden').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()");
+            fenster.webContents.sendInputEvent({ type: 'mouseDown', x: knopf.x, y: knopf.y, button: 'left', clickCount: 1 });
+            fenster.webContents.sendInputEvent({ type: 'mouseUp', x: knopf.x, y: knopf.y, button: 'left', clickCount: 1 });
+            if (!await bisWahr('zustand.laeuft && !!zustand.faehig.psu', 20000)) throw new Error('keine Verbindung zu ' + geraetPort);
+            schritt('verbunden', await js("({ status: document.getElementById('status-text').textContent, idn: document.getElementById('idn').textContent, faehig: zustand.faehig })"));
+
+            // Ein paar Sekunden messen lassen
+            const vorher = await js('zustand.daten.length');
+            await warten(6000);
+            schritt('messen', await js(`({ punkte: zustand.daten.length - ${vorher}, rate: document.getElementById('rate').textContent, letzter: zustand.letzter, ausgang: zustand.ausgang, soll: zustand.soll })`));
+            const geraet = async (b) => js(`frage(${JSON.stringify(b)}).catch(e => 'FEHLER: ' + e.message)`);
+            const urspruenglich = { volt: await geraet('VOLT?'), curr: await geraet('CURR?'), ovp: await geraet('VOLT:LIM?'), ocp: await geraet('CURR:LIM?') };
+            schritt('urspruenglich', urspruenglich);
+            if (await js('zustand.ausgang') !== false && !mitAusgang) throw new Error('Der Ausgang ist eingeschaltet – Gerätetest ohne --mit-ausgang bricht ab, ohne etwas zu ändern');
+
+            // Sollwerte über die Eingabefelder
+            for (const [feld, wert] of [['e-volt', '5'], ['e-curr', '0,5'], ['e-ovp', '6'], ['e-ocp', '0,6']]) {
+                await js(`document.getElementById('${feld}').value = '${wert}'; document.getElementById('${feld}').nextElementSibling.click()`);
+                await warten(900);
+            }
+            schritt('sollwerte', { volt: await geraet('VOLT?'), curr: await geraet('CURR?'), ovp: await geraet('VOLT:LIM?'), ocp: await geraet('CURR:LIM?'), anzeige: await js('zustand.soll') });
+
+            // Feinverstellung: dreimal +10 mV
+            for (let n = 0; n < 3; n++) await js("document.querySelector('.sollwert').dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true }))");
+            await warten(1500);
+            schritt('feinverstellung', { volt: await geraet('VOLT?'), anzeige: await js('zustand.soll.volt') });
+
+            // Vorlage „5 V USB“ bei ausgeschaltetem Ausgang: ohne Rückfrage
+            await js("[...document.querySelectorAll('#vorlagen .vorlage')].find(k => k.textContent.startsWith('5 V USB')).click()");
+            await warten(2500);
+            schritt('vorlage', { volt: await geraet('VOLT?'), curr: await geraet('CURR?'), ovp: await geraet('VOLT:LIM?'), ocp: await geraet('CURR:LIM?'), dialog: await js("document.getElementById('frage-dialog').open") });
+
+            // Multimeter: jede Messfunktion, bei Bereichen jeden Bereich und zurück auf Automatisch
+            const dmm = [];
+            for (const f of await js('Object.keys(FUNKTIONEN)')) {
+                await js(`document.querySelector('#funktionen button[data-f="${f}"]').click()`);
+                await warten(2200);
+                const st = await js('({ funktion: zustand.funktion, anzeige: zustand.dmmAnzeige, auto: zustand.dmmAuto, bereich: zustand.dmmBereich })');
+                const eintrag = { soll: f, ist: st.funktion, anzeige: st.anzeige && `${st.anzeige.anzeige} ${st.anzeige.einheit}`, auto: st.auto, bereich: st.bereich, bereiche: [] };
+                const optionen = await js("[...document.getElementById('bereich').options].map(o => [o.value, o.text])");
+                if (await js("!document.getElementById('bereich').disabled")) {
+                    for (const [wert, text] of [...optionen.filter(([w]) => w !== 'auto'), ...optionen.filter(([w]) => w === 'auto')]) {
+                        await js(`(() => { const s = document.getElementById('bereich'); s.value = '${wert}'; s.dispatchEvent(new Event('change')); })()`);
+                        await warten(2200);
+                        const b = await js('({ auto: zustand.dmmAuto, bereich: zustand.dmmBereich, wahl: document.getElementById("bereich").value })');
+                        const passt = wert === 'auto' ? b.auto === true : b.auto === false && String(b.bereich).replace(/\s/g, '').toLowerCase() === text.replace(/\s/g, '').toLowerCase();
+                        eintrag.bereiche.push({ gewaehlt: text, geraet: `${b.auto ? 'Auto' : 'Manuell'} ${b.bereich}`, passt });
+                    }
+                }
+                dmm.push(eintrag);
+            }
+            schritt('multimeter', dmm);
+
+            // Hold und Relativ
+            await js("document.querySelector('#funktionen button[data-f=\"VOLT:DC\"]').click()");
+            await warten(2000);
+            await js("document.getElementById('hold').click()"); await warten(1200);
+            const holdAn = await geraet('MULT:HOLD?');
+            await js("document.getElementById('hold').click()"); await warten(1200);
+            const holdAus = await geraet('MULT:HOLD?');
+            await js("document.getElementById('rel').click()"); await warten(1500);
+            const relAnzeige = await js('zustand.dmmAnzeige && zustand.dmmAnzeige.anzeige');
+            await js("document.getElementById('rel').click()"); await warten(1500);
+            schritt('holdRel', { holdAn, holdAus, relAnzeige, relKnopf: await js("document.getElementById('rel').classList.contains('aktiv')") });
+
+            // Alarm auf den Multimeter-Wert (ohne Abschalten): „Multimeter über −1“ löst sicher aus
+            await js(`alRegeln.splice(0, alRegeln.length, { an: true, groesse: 'dmm', vergleich: 'ueber', wert: '-1', aktion: 'alarm' }); alZeichnen(); document.getElementById('al-ton').checked = false; document.getElementById('al-aktiv').click()`);
+            const alarm = await bisWahr("document.getElementById('alarm-leiste').classList.contains('sichtbar')", 5000);
+            await js("document.getElementById('alarm-quittieren').click(); document.getElementById('al-aktiv').click()");
+            schritt('alarmMultimeter', alarm);
+
+            // Bauteilprüfung: ohne angeschlossenes Bauteil muss „OL“ / „Bauteil anlegen“ kommen
+            await js(`document.getElementById('bt-funktion').value = 'RES'; document.getElementById('bt-funktion').dispatchEvent(new Event('change')); document.querySelector('.tab[data-seite="seite-bauteile"]').click()`);
+            await warten(3500);
+            schritt('bauteile', await js("({ wert: document.getElementById('bt-wert').textContent, text: document.getElementById('bt-text').textContent, gezaehlt: bt.gut + bt.schlecht })"));
+            await js("document.querySelector('.tab[data-seite=\"seite-live\"]').click()");
+
+            // Fernanzeige liefert echte Werte
+            await js("fernDialog(); document.getElementById('fe-port').value = '18766'; document.getElementById('fe-an').click()");
+            await bisWahr('fe.laeuft', 5000);
+            await warten(1500);
+            const code = await js('feEinst.code');
+            let fern;
+            try { const r = await fetch('http://127.0.0.1:18766/daten', { headers: { 'x-code': code } }); fern = await r.json(); } catch (e) { fern = { fehler: String(e) }; }
+            await js("document.getElementById('fe-an').click(); document.getElementById('fern-dialog').close()");
+            schritt('fernanzeige', { verbunden: fern.verbunden, demo: fern.demo, u: fern.u, dmm: fern.dmm });
+
+            // Mit eingeschaltetem Ausgang – nur mit --mit-ausgang, höchstens 2 V und 50 mA
+            if (mitAusgang) {
+                const aus = await js('ausgangSchalten(false).then(() => zustand.ausgang)');
+                await js('sollwerteSetzen({ volt: 1, curr: 0.05, ovp: 3, ocp: 0.1 })');
+                await warten(800);
+                // Ausgang von Hand ein und aus
+                await js("document.getElementById('ausgang').click()");
+                await warten(2500);
+                const an = { outp: await geraet('OUTP?'), messung: await js('zustand.letzter'), knopf: await js("document.getElementById('ausgang').textContent") };
+                await js("document.getElementById('ausgang').click()");
+                await warten(1500);
+                schritt('ausgang', { vorher: aus, an, danach: await geraet('OUTP?') });
+
+                // Abschalten nach 3 s
+                await js(`for (const [id, w] of [['ab-zeit-an', true], ['ab-wh-an', false], ['ab-ah-an', false], ['ab-unter-an', false]]) document.getElementById(id).checked = w;
+                    document.getElementById('ab-h').value = '0'; document.getElementById('ab-min').value = '0'; document.getElementById('ab-s').value = '3';
+                    ausgangSchalten(true).then(() => document.getElementById('ab-start').click())`);
+                const abgeschaltet = await bisWahr("document.getElementById('ab-status').textContent === 'abgeschaltet'", 12000);
+                schritt('abschalten', { abgeschaltet, outp: await geraet('OUTP?') });
+
+                // Ablaufprogramm: 1 V, dann Rampe auf 2 V, je 3 s
+                await js(`apProgramm = { schritte: [{ volt: 1, curr: 0.05, dauer: 3, rampe: false }, { volt: 2, curr: 0.05, dauer: 3, rampe: true }], wdh: 1, ende: 'aus' }; apZeichnen(); document.getElementById('ap-start').click()`);
+                await warten(4500);
+                const mitten = await js('zustand.letzter && zustand.letzter.u');
+                await bisWahr("document.getElementById('ap-status').textContent !== 'läuft'", 15000);
+                schritt('ablauf', { status: await js("document.getElementById('ap-status').textContent"), spannungInDerRampe: mitten, volt: await geraet('VOLT?'), outp: await geraet('OUTP?') });
+
+                // Erst-Einschalten bis 2 V mit 50 mA
+                await js(`for (const [id, w] of [['ee-name', 'Gerätetest'], ['ee-ziel', '2'], ['ee-strom', '0,05'], ['ee-rampe', '3'], ['ee-grenze', '0,04'], ['ee-halten', '2']]) document.getElementById(id).value = w;
+                    document.getElementById('ee-anlassen').checked = false; document.getElementById('ee-start').click()`);
+                await bisWahr('ee.laeuft', 3000);
+                await bisWahr('!ee.laeuft', 25000);
+                schritt('ersteinschalten', { ergebnis: await js('ee.protokoll.at(-1)'), outp: await geraet('OUTP?') });
+
+                // Zyklentest: 2 Zyklen mit 1 V, Strom 0–50 mA erwartet
+                await js(`for (const [id, w] of [['zt-volt', '1'], ['zt-curr', '0,05'], ['zt-an', '2'], ['zt-aus', '1'], ['zt-zyklen', '2'], ['zt-einschwing', '0,5'], ['zt-min', '0'], ['zt-max', '0,05'], ['zt-fehler', 'halt']]) document.getElementById(id).value = w;
+                    document.getElementById('zt-start').click()`);
+                await bisWahr('zt.laeuft', 3000);
+                await bisWahr('!zt.laeuft', 25000);
+                schritt('zyklentest', { ok: await js('zt.ok'), fehler: await js('zt.fehler'), protokoll: await js('zt.protokoll'), outp: await geraet('OUTP?') });
+
+                // Kennlinie 0 … 2 V in 0,5-V-Schritten, 20 mA Grenze
+                await js(`for (const [id, w] of [['kl-name', 'Gerätetest'], ['kl-von', '0'], ['kl-bis', '2'], ['kl-schritt', '0,5'], ['kl-strom', '0,02'], ['kl-warten', '400']]) document.getElementById(id).value = w;
+                    document.getElementById('kl-aus').checked = true; document.getElementById('kl-messen').click()`);
+                await bisWahr('kl.laeuft', 3000);
+                await bisWahr('!kl.laeuft', 25000);
+                schritt('kennlinie', { punkte: await js('klKurven.at(-1).punkte'), outp: await geraet('OUTP?') });
+
+                // Fernanzeige: „Ausgang aus“ vom Handy
+                await js('ausgangSchalten(true)');
+                await warten(1200);
+                await js("fernDialog(); document.getElementById('fe-port').value = '18766'; document.getElementById('fe-notaus').checked = true; document.getElementById('fe-notaus').dispatchEvent(new Event('change')); document.getElementById('fe-an').click()");
+                await bisWahr('fe.laeuft', 5000);
+                const fcode = await js('feEinst.code');
+                let antwort;
+                try { antwort = (await fetch('http://127.0.0.1:18766/aus', { method: 'POST', headers: { 'x-code': fcode } })).status; } catch (e) { antwort = String(e); }
+                await warten(1500);
+                schritt('fernAus', { antwort, outp: await geraet('OUTP?') });
+                await js("document.getElementById('fe-an').click(); document.getElementById('fern-dialog').close()");
+                await js('ausgangSchalten(false)');
+            }
+
+            // Alles zurück: Sollwerte wie vorher, Multimeter auf Gleichspannung automatisch
+            const zahlAus = (s) => Number(String(s).replace(',', '.'));
+            await js(`sollwerteSetzen({ volt: ${zahlAus(urspruenglich.volt)}, curr: ${zahlAus(urspruenglich.curr)}, ovp: ${zahlAus(urspruenglich.ovp)}, ocp: ${zahlAus(urspruenglich.ocp)} })`);
+            await warten(1000);
+            await js("document.querySelector('#funktionen button[data-f=\"VOLT:DC\"]').click()");
+            await warten(2000);
+            schritt('wiederhergestellt', { volt: await geraet('VOLT?'), curr: await geraet('CURR?'), ovp: await geraet('VOLT:LIM?'), ocp: await geraet('CURR:LIM?'), ausgang: await geraet('OUTP?'), multimeter: await js('zustand.funktion') });
+
+            // Trennen (schickt SYST:LOC)
+            await js("document.getElementById('verbinden').click()");
+            await warten(1500);
+        } catch (e) {
+            fehler.push('Ausnahme: ' + (e.stack || e));
+        } finally {
+            const logs = await js('window._logs || []').catch(() => []);
+            fs.writeFileSync(path.join(ordner, 'geraet-log.txt'), logs.map(([t, a, x]) => `${new Date(t).toLocaleTimeString('de-DE')} ${a.padEnd(4)} ${x}`).join('\n'), 'utf8');
+            ergebnis.logFehler = logs.filter(([, a]) => a === 'err').map(([t, , x]) => `${new Date(t).toLocaleTimeString('de-DE')} ${x}`);
+            ergebnis.fehler = fehler;
+            console.log(JSON.stringify(ergebnis, null, 1));
+            app.exit(fehler.length || ergebnis.logFehler.length ? 1 : 0);
         }
     });
 }

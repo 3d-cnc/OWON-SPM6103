@@ -1,13 +1,25 @@
 # Stand und offene Punkte
 
-Stand 06.10.2026: Version 1.4.0 liegt auf `main` und als Release
-[v1.4.0](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.4.0) (`OWON-SPM6103.exe`, nicht signiert).
+Stand 07.10.2026: Version 1.4.1 liegt auf `main` und als Release
+[v1.4.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.4.1) (`OWON-SPM6103.exe`, nicht signiert).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
 **Am echten Gerät bestätigt** (Marcos Bild vom 06.10., Version 1.0.1): Verbinden klappt, und die
 Antworten haben genau das Format aus OWONs Anleitung – `MEAS:ALL:INFO?` liefert sieben Werte
 (`0.002 0.000 0.000 0 0 0 0`), `CONF:ALL?` z. B. `VOLT:AC,+231.89V,AUTO,750V`.
+
+**Gerätetest am 07.10. (Firmware FV:V2.1.0, COM3, Ausgang aus):** `npx electron . --geraet=COM3` in `programm/`
+bedient das Programm am echten Gerät und sammelt jede Fehlermeldung. Bestätigt: Verbinden, Messen (3,8/s),
+Sollwerte, OVP/OCP, Feinverstellung, Vorlagen, alle 8 Messfunktionen mit allen Bereichen, Hold, Alarm auf den
+Multimeter-Wert, Bauteilprüfung (OL kommt als Text `OL`), Fernanzeige mit echten Werten. Eigenheiten des Geräts:
+- Bereiche nur in der Schreibweise der Anleitung (`200E-3`, `2`, `20E3` …); `0.2` oder `2000` werden ignoriert.
+- Ein fester Bereich schaltet von selbst auf „Manual“; ein `…:RANG:AUTO OFF` direkt davor verschluckt den Bereich.
+- Nach Funktions-/Bereichswechsel schaltet das Gerät Relais und antwortet bis ~1 s verzögert; zwei Befehle im
+  selben Augenblick (ohne Pause) – der zweite geht verloren. Das Programm wartet deshalb nach Multimeter-Befehlen
+  300 ms und auf Antworten bis 1,5 s.
+- `OUTP?` und Schutzmeldungen kommen als `ON`/`OFF`, `MEAS:ALL:INFO?` mit Kommas, `MEAS:ALL?` nur mit U und I.
+- `…:RANG:NULL?` und `FUNC:VOLT?` antworten `ERR`; ob Relativ wirkt, lässt sich nur am Display sehen.
 
 **Versionsprüfung (seit 1.1.0):** Das Programm fragt `api.github.com/repos/3d-cnc/OWON-SPM6103/releases/latest`.
 Solange das Repo privat ist, antwortet GitHub mit 404, und das Symbol neben der Version bleibt grau
@@ -27,9 +39,10 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
   in Kauf (Variante A). Verworfen: selbst erstelltes Zertifikat (große Warnseite statt kleinem Hinweis)
   und echtes Let's-Encrypt-Zertifikat über eine Subdomain von cnc3d.tech (DNS-Eintrag auf die Adresse im
   Heimnetz, Ausnahme gegen DNS-Rebinding in der Fritz!Box, Verlängerung alle 90 Tage, nur für Marco nutzbar).
-- **Bauteilprüfung am echten Multimeter:** Wie meldet das SPM6103 „nichts angeschlossen“ in `CONF:ALL?`
-  (Anzeige OL)? Das Programm erwartet einen Wert, der keine Zahl ist. Kommt stattdessen eine sehr große
-  Zahl, zählt die Prüfung nicht von selbst weiter – dann die Konsolen-Ausgabe an Claude geben.
+- **Gerätetest mit eingeschaltetem Ausgang** (`--geraet=COM3 --mit-ausgang`, höchstens 2 V / 50 mA): Ausgang,
+  Abschalten, Ablauf, Erst-Einschalten, Zyklentest, Kennlinie, „Ausgang aus“ über die Fernanzeige. Wartet auf
+  Marcos Antwort, was am Ausgang hängt. Akku laden nur mit angeschlossenem Akku.
+- **Relativ am Display prüfen:** ob „Relativ“ den Wert am Gerät wirklich auf null setzt.
 
 ## Umgesetzt
 
@@ -39,6 +52,9 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
   Alles nur im Demo-Modus geprüft.
 - 06.10., Version 1.3.0: **Hell/Dunkel** zum Umschalten (Knopf oben rechts, Menü, Strg+Umschalt+L), Vorgabe
   dunkel, unabhängig von Windows; gespeichert. Damit ist der Teil „Hell/Dunkel“ aus SPM-6 erledigt.
+- 07.10., Version 1.4.1: **Fehler vom echten Gerät behoben** – 200 mV/200 mA ließen sich nicht wählen (`0.2` statt
+  `200E-3`), der erste Bereichswechsel aus „Automatisch“ ging verloren, „Keine Antwort auf CONF:ALL?“ nach
+  Bereichswechseln; Anzeige ohne führende Nullen („0,000 A“). Neu: Gerätetest `--geraet=COM3`.
 - 06.10., Version 1.4.0: **SPM-22 bis SPM-27** – Feinverstellung per Mausrad, neuer Tab „Prüfstand“ mit
   Erst-Einschalten und Zyklentest, Verlauf zoomen/verschieben/Ausschnitt und Kurven als Bild, Messbericht
   als PDF, Fernanzeige im WLAN (Webserver in `main.js`, Seite `programm/fern/index.html`, npm-Paket

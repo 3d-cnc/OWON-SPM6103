@@ -738,15 +738,16 @@ const uhrzeit = t => new Date(t).toLocaleTimeString('de-DE');
 // Messfunktionen des Multimeters, Befehle wie in der OWON-Programmieranleitung (SPM Series, S. 11-17)
 const FUNKTIONEN = {
   'VOLT:DC': { name: 'Gleichspannung', knopf: 'V DC', einheit: 'V', befehl: 'FUNC:VOLT:DC',
-    bereiche: [['0.2', '200 mV'], ['2', '2 V'], ['20', '20 V'], ['200', '200 V'], ['1000', '1000 V']],
+    // Bereichswerte genau so schreiben wie in OWONs Anleitung – „0.2“ ignoriert das Gerät, „200E-3“ nimmt es (am SPM6103 geprüft)
+    bereiche: [['200E-3', '200 mV'], ['2', '2 V'], ['20', '20 V'], ['200', '200 V'], ['1000', '1000 V']],
     bereich: 'VOLT:DC:RANG', auto: 'VOLT:DC:RANG:AUTO', rel: 'VOLT:DC:RANG:NULL' },
   'VOLT:AC': { name: 'Wechselspannung', knopf: 'V AC', einheit: 'V', befehl: 'FUNC:VOLT:AC',
-    bereiche: [['0.2', '200 mV'], ['2', '2 V'], ['20', '20 V'], ['200', '200 V'], ['750', '750 V']],
+    bereiche: [['200E-3', '200 mV'], ['2', '2 V'], ['20', '20 V'], ['200', '200 V'], ['750', '750 V']],
     bereich: 'VOLT:AC:RANG', auto: 'VOLT:AC:RANG:AUTO', rel: 'VOLT:AC:RANG:NULL' },
   'CURR:DC': { name: 'Gleichstrom', knopf: 'A DC', einheit: 'A', befehl: 'FUNC:CURR:DC',
-    bereiche: [['0.2', '200 mA'], ['10', '10 A']], bereich: 'CURR:DC:RANG', rel: 'CURR:DC:RANG:NULL' },
+    bereiche: [['200E-3', '200 mA'], ['10', '10 A']], bereich: 'CURR:DC:RANG', rel: 'CURR:DC:RANG:NULL' },
   'CURR:AC': { name: 'Wechselstrom', knopf: 'A AC', einheit: 'A', befehl: 'FUNC:CURR:AC',
-    bereiche: [['0.2', '200 mA'], ['10', '10 A']], bereich: 'CURR:AC:RANG', rel: 'CURR:AC:RANG:NULL' },
+    bereiche: [['200E-3', '200 mA'], ['10', '10 A']], bereich: 'CURR:AC:RANG', rel: 'CURR:AC:RANG:NULL' },
   'RES': { name: 'Widerstand', knopf: 'Ω', einheit: 'Ω', befehl: 'FUNC:RES',
     bereiche: [['200', '200 Ω'], ['2E3', '2 kΩ'], ['20E3', '20 kΩ'], ['200E3', '200 kΩ'], ['2E6', '2 MΩ'], ['20E6', '20 MΩ'], ['100E6', '100 MΩ']],
     bereich: 'RES:RANG', auto: 'RES:RANG:AUTO', rel: 'RES:RANG:NULL' },
@@ -842,9 +843,10 @@ class SerielleVerbindung {
     await this.schreiber.write(new TextEncoder().encode(befehl + '\n'));
   }
 
-  frage(befehl, wartezeit = 800) {
+  // Normal antwortet das SPM6103 nach ~50 ms, während das Multimeter umschaltet (Relais) aber bis ~1 s später
+  frage(befehl, wartezeit = 1500) {
     return this.exklusiv(async () => {
-      if (this.nachTimeout) { await pause(200); this.nachTimeout = false; }   // späte Antwort abfließen lassen
+      if (this.nachTimeout) { await pause(400); this.nachTimeout = false; }   // späte Antwort abfließen lassen
       this.puffer = '';
       const antwort = new Promise((erfuellen, ablehnen) => {
         this.warter = { erfuellen, uhr: setTimeout(() => {
@@ -857,8 +859,11 @@ class SerielleVerbindung {
     });
   }
 
+  // Nach Multimeter-Befehlen (Funktion, Bereich, Auto, Relativ, Hold) braucht das Gerät länger – sonst gehen
+  // der nächste Befehl oder die nächste Antwort verloren (am SPM6103 gemessen)
   befehl(befehl) {
-    return this.exklusiv(async () => { await this.senden(befehl); await pause(60); });
+    const langsam = /^(FUNC|MULT|(VOLT|CURR):(AC|DC):RANG|RES:RANG|CAP:NULL)/i.test(befehl);
+    return this.exklusiv(async () => { await this.senden(befehl); await pause(langsam ? 300 : 60); });
   }
 
   async schliessen() {
@@ -1180,7 +1185,8 @@ function dmmLesen(text, art, rec) {
     const w = wertMitEinheit(teile[1]);
     if (w) {
       wert = w.si;
-      anzeige = w.zahl.replace(/^\+/, '').replace('.', ',');
+      // „+00.000“ → „0,000“: Pluszeichen und überzählige führende Nullen weg, die Nachkommastellen des Geräts bleiben
+      anzeige = w.zahl.replace(/^\+/, '').replace(/^(-?)0+(?=\d)/, '$1').replace('.', ',');
       einheit = w.vorsatz + (w.einheit || FUNKTIONEN[funktion]?.einheit || '');
     } else {
       wert = NaN; anzeige = teile[1].replace(/[a-zA-ZΩ]+$/, '') || 'OL'; einheit = '';
@@ -1200,7 +1206,7 @@ function dmmLesen(text, art, rec) {
   zustand.funktion = funktion;
   zustand.dmmAnzeige = { anzeige, einheit };
   zustand.dmmAuto = auto; zustand.dmmBereich = bereich;
-  if (rec) { rec.dmm = wert; rec.dmmFunktion = funktion; rec.dmmText = anzeige + ' ' + einheit; }
+  if (rec) { rec.dmm = wert; rec.dmmFunktion = funktion; rec.dmmText = `${anzeige} ${einheit}`.trim(); }
   return true;
 }
 
@@ -1762,8 +1768,9 @@ document.querySelectorAll('[data-setze]').forEach(knopf => {
 $('bereich').addEventListener('change', async e => {
   const f = FUNKTIONEN[zustand.funktion];
   if (!f) return;
+  // Ein fester Bereich schaltet das Gerät von selbst auf „Manual“ – ein „AUTO OFF“ vorweg verschluckt es den Bereich
   if (e.target.value === 'auto') await befehl(f.auto + ' ON');
-  else { if (f.auto) await befehl(f.auto + ' OFF'); await befehl(`${f.bereich} ${e.target.value}`); }
+  else await befehl(`${f.bereich} ${e.target.value}`);
   e.target.blur();
 });
 

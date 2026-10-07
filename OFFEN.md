@@ -36,9 +36,8 @@ Eigenheiten des Geräts:
   abfragen, `SIM:KEY:DISP` schaltet sie nur eine weiter. Dafür gibt es den Knopf „Display umschalten“.
 
 **Versionsprüfung (seit 1.1.0):** Das Programm fragt `api.github.com/repos/3d-cnc/OWON-SPM6103/releases/latest`.
-Solange das Repo privat ist, antwortet GitHub mit 404, und das Symbol neben der Version bleibt grau
-(„Prüfung nicht möglich“). Sobald das Repo öffentlich ist, wird es ohne weitere Änderung grün oder rot.
-Neue Version = höhere `version` in `programm/package.json` und ein Release mit dem Tag `v` + Version.
+Seit 07.10. ist das Repo öffentlich, die Prüfung funktioniert: Der Selbsttest meldet „aktuell“ (v1.0.1), das Symbol
+ist grün. Neue Version = höhere `version` in `programm/package.json` und ein Release mit dem Tag `v` + Version.
 
 ## Liegt bei Marco
 
@@ -55,6 +54,7 @@ Neue Version = höhere `version` in `programm/package.json` und ein Release mit 
 
 ## Umgesetzt
 
+- 07.10.: **Repo öffentlich** (SPM-9, Marco). Die Versionsprüfung zeigt jetzt grün oder rot statt grau.
 - 07.10., Version 1.0.1: Knopf **„Display umschalten“** im Multimeter-Feld (`SIM:KEY:DISP`). Marco war aufgefallen,
   dass das Display beim Umschalten der Messfunktion nicht mitwechselt: Es stand auf einer Netzteil-Ansicht.
   Dazu **Starten/Beenden** auf „Aufzeichnung“ (Marco): Die Aufzeichnung beginnt nicht mehr beim Verbinden. Die Kurven
@@ -92,7 +92,7 @@ nie neu vergeben. Vergeben sind SPM-1 bis SPM-29, **die nächste ist SPM-30**.
 | Nr. | Vorschlag |
 |---|---|
 | SPM-1 | Signieren über den **Microsoft Store**. Das Entwicklerkonto für Privatpersonen ist seit 09/2025 kostenlos (Microsoft-Konto, Ausweis mit Selfie, keine Kreditkarte). Microsoft signiert selbst, es gibt keine SmartScreen-Warnung mehr. Claude baut das Paket mit electron-builder als MSIX/AppX und schreibt die Schritte im Partner Center auf; der Eintrag kann versteckt sein, sodass ihn nur findet, wer den Link hat. Nachteile: jede Version geht durch Microsofts Prüfung, und es gibt eine Store-Installation statt einer losen .exe. |
-| SPM-2 | Signieren über die **SignPath Foundation**, kostenlos für Open Source. Bedingungen: Repo öffentlich, Open-Source-Lizenz (z. B. MIT), die .exe baut GitHub Actions automatisch aus dem Repo, eine Download-Seite beschreibt das Programm, SignPath prüft den Antrag. Danach steht „cnc3d.tech“ statt „Unbekannter Herausgeber“; ganz still ist SmartScreen erst, wenn genug Leute die Datei heruntergeladen haben. |
+| SPM-2 | Signieren über die **SignPath Foundation**, kostenlos für Open Source. Bedingungen: Repo öffentlich, Open-Source-Lizenz (z. B. MIT), die .exe baut GitHub Actions automatisch aus dem Repo, eine Download-Seite beschreibt das Programm, SignPath prüft den Antrag. **Korrektur 07.10.:** Als Herausgeber steht dann „SignPath Foundation“, nicht „cnc3d.tech“ (das Zertifikat gehört der Stiftung). Weitere Bedingungen laut signpath.org/terms: Zwei-Faktor-Anmeldung für alle Beteiligten, feste Rollen (Autor, Prüfer, Freigeber), eine Seite „Code signing policy“ mit Nennung von SignPath, jede Signatur von Hand freigeben, „nachprüfbarer Ruf“ des Projekts. Ein neues Projekt mit einem Nutzer wird wahrscheinlich abgelehnt. Ganz still ist SmartScreen erst, wenn genug Leute die Datei heruntergeladen haben. |
 | SPM-3 | **Update mit einem Klick:** „Update herunterladen“ lädt die neue .exe im Programm herunter (mit Fortschrittsbalken), prüft die Größe, ersetzt nach einer Rückfrage die alte Datei und startet neu. Alternative: eine Installer-Fassung mit electron-updater, die Updates selbst im Hintergrund einspielt. Beides braucht das öffentliche Repo. |
 | SPM-4 | **Update-Hinweis mit Maß:** „Diese Version überspringen“ und „Später erinnern“. Bei Dauermessungen über viele Stunden prüft das Programm höchstens einmal am Tag nach, auch wenn es die ganze Zeit läuft. |
 | SPM-5 | **Oberfläche skalieren** (80–150 %) im Menü, gespeichert. Dann bleibt die 1920 × 1080-Anordnung bei jeder Fenstergröße gleich und wird nur verkleinert oder vergrößert, statt sich umzuordnen – etwa auf einem 4K-Bildschirm oder auf 1600 × 900. Strg + / Strg − gehen schon heute, werden aber nicht gemerkt. |
@@ -104,7 +104,7 @@ nie neu vergeben. Vergeben sind SPM-1 bis SPM-29, **die nächste ist SPM-30**.
 
 | Nr. | Vorschlag |
 |---|---|
-| SPM-9 | **Repo öffentlich schalten** (Marco, 06.10.: „kann auf die Todo-Liste“). Am 06.10. geprüft: Im Verlauf liegen weder OWONs PDF noch eine .exe noch Passwörter oder Schlüssel. Sinnvoll vorher: SPM-7 (Lizenz, README). Dann `gh repo edit 3d-cnc/OWON-SPM6103 --visibility public --accept-visibility-change-consequences`. Ab da funktioniert die Versionsprüfung (graues Symbol wird grün/rot), und SPM-2 und SPM-3 werden möglich. |
+| SPM-9 | ~~Repo öffentlich schalten~~ **erledigt 07.10.** (Marco). Vorher geprüft: Im Verlauf liegen weder OWONs PDF noch eine .exe noch Passwörter oder Schlüssel. Eine Lizenz fehlt noch (SPM-7). Ohne sie darf man den Code ansehen, aber nicht weiterverwenden. |
 
 ### Weitere Funktionen (Vorschläge vom 06.10., nach 1.3.0)
 

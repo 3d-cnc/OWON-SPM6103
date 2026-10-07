@@ -1,7 +1,7 @@
 # Stand und offene Punkte
 
-Stand 07.10.2026: Version 1.0.1 liegt auf `main` und als Release
-[v1.0.1](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.1) (`OWON-SPM6103-V1.0.1.exe`, nicht signiert; seit 07.10. steht die Version im Dateinamen).
+Stand 07.10.2026: Version 1.0.2 liegt auf `main` und als Release
+[v1.0.2](https://github.com/3d-cnc/OWON-SPM6103/releases/tag/v1.0.2) (`OWON-SPM6103-V1.0.2.exe`, nicht signiert; seit 07.10. steht die Version im Dateinamen).
 Selbsttest: `npx electron . --pruefen=bild.png` in `programm/` – spielt seit 1.2.0 auch jede Zusatzfunktion
 einmal im Demo-Modus durch (Demo-Last Widerstand, Akku oder LED; das Demo-Multimeter wechselt die Bauteile).
 
@@ -57,7 +57,7 @@ ist grün. Neue Version = höhere `version` in `programm/package.json` und ein R
 
 ## Umgesetzt
 
-- 07.10.: Nach einem `ERR` des Geräts fragt das Programm sofort noch einmal (Marco sah zwei „Einzelner Aussetzer“
+- 07.10., Version 1.0.2: Nach einem `ERR` des Geräts fragt das Programm sofort noch einmal (Marco sah zwei „Einzelner Aussetzer“
   im Log). Selbsttest streut im Demo-Modus `ERR` ein; zwei Gerätetests fehlerfrei.
 - 07.10.: **Repo öffentlich** (SPM-9, Marco). Die Versionsprüfung zeigt jetzt grün oder rot statt grau.
 - 07.10., Version 1.0.1: Knopf **„Display umschalten“** im Multimeter-Feld (`SIM:KEY:DISP`). Marco war aufgefallen,
